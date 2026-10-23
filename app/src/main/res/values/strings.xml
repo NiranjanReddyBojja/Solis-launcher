@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Solis</string>
+    <string name="accessibility_service_label">Solis Focus</string>
+    <string name="accessibility_service_summary">Lets Solis lock your screen and pull down the notification shade.</string>
+    <string name="accessibility_service_description">Solis uses this service only to perform two actions when you ask for them: locking the screen after you interrupt an impulse, and pulling down the notification shade when you swipe down on the home screen. Solis cannot see, read or collect anything on your screen.</string>
+</resources>

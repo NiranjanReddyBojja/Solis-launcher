@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Minimal-privilege configuration: no window content, no event stream beyond what the
+    framework requires. Used only for GLOBAL_ACTION_LOCK_SCREEN and GLOBAL_ACTION_NOTIFICATIONS.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeAnnouncement"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagDefault"
+    android:canRetrieveWindowContent="false"
+    android:canPerformGestures="false"
+    android:notificationTimeout="1000"
+    android:description="@string/accessibility_service_description"
+    android:summary="@string/accessibility_service_summary" />

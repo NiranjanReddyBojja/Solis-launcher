@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+        QUERY_ALL_PACKAGES: Solis is a home-screen replacement. Its core function is to list
+        and launch every app the user has installed, which Google Play explicitly permits for
+        launchers ("Device search" / launcher use case in the Package Visibility policy).
+        When submitting, declare the "launcher" core functionality in the Play Console
+        permissions declaration form. Solis never transmits the app list off the device.
+    -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+
+    <!-- Required for Intent.ACTION_DELETE (uninstall from the long-press sheet) on API 28+. -->
+    <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
+
+    <!-- Pro: writes the current harsh-truth quote onto the lock screen wallpaper. -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
+
+    <!-- Best-effort shade pull-down fallback when the accessibility service is off. -->
+    <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
+
+    <!-- Play Billing (also merged from the billing library, declared here for clarity). -->
+    <uses-permission android:name="com.android.vending.BILLING" />
+
+    <application
+        android:name=".SolisApp"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Solis">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:clearTaskOnLaunch="true"
+            android:stateNotNeeded="true"
+            android:excludeFromRecents="true"
+            android:resizeableActivity="true"
+            android:screenOrientation="unspecified"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+            <!-- Also listed in other launchers so the user can open Solis before switching. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            FocusAccessibilityService only performs two global actions on explicit user input:
+            lock screen and pull down the notification shade. It does not observe, read or
+            collect window content (canRetrieveWindowContent="false").
+        -->
+        <service
+            android:name=".system.FocusAccessibilityService"
+            android:exported="false"
+            android:label="@string/accessibility_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+    </application>
+</manifest>
