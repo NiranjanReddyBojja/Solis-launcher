@@ -18,6 +18,7 @@ import com.android.billingclient.api.QueryPurchasesParams
 import com.android.billingclient.api.acknowledgePurchase
 import com.android.billingclient.api.queryProductDetails
 import com.android.billingclient.api.queryPurchasesAsync
+import com.solis.launcher.BuildConfig
 import com.solis.launcher.data.DataStoreManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -180,7 +181,8 @@ class BillingManager(
         val owned = result.purchasesList.filter { PRODUCT_ID in it.products }
         val purchased = owned.filter { it.purchaseState == Purchase.PurchaseState.PURCHASED }
         if (purchased.isEmpty()) {
-            dataStore.setPro(false)
+            // Debug builds keep the settings-screen Pro toggle instead of being reset by Play.
+            if (!BuildConfig.DEBUG) dataStore.setPro(false)
             if (reportIfNone) {
                 _events.emit(
                     if (owned.any { it.purchaseState == Purchase.PurchaseState.PENDING }) {

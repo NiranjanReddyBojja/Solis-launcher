@@ -87,33 +87,39 @@ class LauncherViewModel(
     private var countdownJob: Job? = null
     private var roleRequestFailed = false
 
-    val state: StateFlow<LauncherUiState> = combine(
+    /** Everything except the clock, so app filtering is not redone on every one-second tick. */
+    private val snapshot: Flow<LauncherUiState> = combine(
         session,
         prefs,
         appRepository.apps,
-        clock,
         billingManager.formattedPrice,
-    ) { s, stored, apps, now, price ->
-        val p = stored.copy(
-            dodgedToday = if (stored.dodgedDate == now.toLocalDate().toString()) stored.dodgedCount else 0,
-        )
+    ) { s, p, apps, price ->
         // Pro-only filters fall away automatically if the entitlement is ever revoked.
         val hidden = if (p.isPro) p.hiddenPackages else emptySet()
         LauncherUiState(
             screen = s.screen,
             dialog = s.dialog,
-            now = now,
             quote = currentQuote(p),
             prefs = p,
             allApps = apps,
             carouselApps = AppFilter.carousel(apps, hidden),
             searchResults = AppFilter.search(apps, hidden, s.query),
             query = s.query,
-            curfewLocked = p.isPro && CurfewPolicy.isLocked(p.curfew, now.hour * 60 + now.minute),
             isDefaultLauncher = s.isDefaultLauncher,
             accessibilityEnabled = s.accessibilityEnabled,
             price = price,
             paywallMessage = s.paywallMessage,
+        )
+    }
+
+    val state: StateFlow<LauncherUiState> = combine(snapshot, clock) { base, now ->
+        val p = base.prefs
+        val today = now.toLocalDate().toString()
+        base.copy(
+            now = now,
+            // Zero the metric at midnight without waiting for a DataStore write.
+            prefs = if (p.dodgedDate == today || p.dodgedToday == 0) p else p.copy(dodgedToday = 0),
+            curfewLocked = p.isPro && CurfewPolicy.isLocked(p.curfew, now.hour * 60 + now.minute),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LauncherUiState())
 

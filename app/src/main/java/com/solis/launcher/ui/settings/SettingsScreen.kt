@@ -190,7 +190,7 @@ fun SettingsScreen(
                 )
             }
         }
-        item { QuoteComposer(proColor) { onAction(LauncherAction.AddQuote(it)) } }
+        item { QuoteComposer(proColor, state.isPro) { onAction(LauncherAction.AddQuote(it)) } }
 
         if (BuildConfig.DEBUG) {
             section("debug")
@@ -271,7 +271,7 @@ private fun Stepper(
 }
 
 @Composable
-private fun QuoteComposer(color: androidx.compose.ui.graphics.Color, onAdd: (String) -> Unit) {
+private fun QuoteComposer(color: androidx.compose.ui.graphics.Color, isPro: Boolean, onAdd: (String) -> Unit) {
     var draft by rememberSaveable { mutableStateOf("") }
     Column(modifier = Modifier.padding(top = 8.dp)) {
         BasicTextField(
@@ -295,7 +295,8 @@ private fun QuoteComposer(color: androidx.compose.ui.graphics.Color, onAdd: (Str
             "[ add quote ]",
             onClick = {
                 onAdd(draft)
-                draft = ""
+                // Without Pro the paywall opens instead; keep the draft for after unlocking.
+                if (isPro) draft = ""
             },
             color = color,
             style = MaterialTheme.typography.labelLarge,

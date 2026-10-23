@@ -44,9 +44,11 @@ fun ImpulseInterceptorDialog(
 ) {
     var trigger by rememberSaveable { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
     SolisFullScreenDialog(onDismiss = onDismiss) {
+        // Must run inside the dialog's own composition: the text field lives in the dialog
+        // window, and requesting focus before it is attached throws.
+        LaunchedEffect(Unit) { focusRequester.requestFocus() }
         Text("step 1", style = MaterialTheme.typography.labelMedium, color = SolisColors.Accent)
         Spacer(Modifier.height(8.dp))
         Text(
