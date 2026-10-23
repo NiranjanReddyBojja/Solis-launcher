@@ -13,7 +13,7 @@ import java.time.LocalDateTime
 enum class Screen { HOME, DRAWER, SETTINGS }
 
 /** Why the accessibility disclosure is being shown, so we can explain the right thing. */
-enum class AccessibilityPurpose { LOCK_SCREEN, NOTIFICATION_SHADE }
+enum class AccessibilityPurpose { LOCK_SCREEN, NOTIFICATION_SHADE, SOLIS_LOCK_SCREEN }
 
 sealed interface LauncherDialog {
     data object ImpulseInterceptor : LauncherDialog
@@ -89,6 +89,7 @@ sealed interface LauncherAction {
     data class SetUseCustomQuotes(val enabled: Boolean) : LauncherAction
     data class SetLockscreenSync(val enabled: Boolean) : LauncherAction
     data object ResetNotesApp : LauncherAction
+    data class SetSolisLockScreen(val enabled: Boolean) : LauncherAction
     data object OpenAccessibilitySettings : LauncherAction
     data object DebugTogglePro : LauncherAction
 }

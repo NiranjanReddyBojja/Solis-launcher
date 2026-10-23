@@ -34,6 +34,8 @@ data class LauncherPreferences(
     val quoteRotatedAtMillis: Long = 0L,
     val curfew: CurfewConfig = CurfewConfig(),
     val lockscreenQuoteSync: Boolean = false,
+    /** Show the Solis lock screen over the system keyguard whenever the screen goes off. */
+    val solisLockScreen: Boolean = false,
     val notesPackage: String? = null,
     val launcherSetupDismissed: Boolean = false,
     val accessibilityDisclosureAccepted: Boolean = false,
