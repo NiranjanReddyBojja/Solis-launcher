@@ -85,3 +85,8 @@ Debug builds show a "pro (debug builds only)" toggle in settings so you can test
 - The activity also has a `LAUNCHER` filter so Solis can be opened from the old launcher before
   being made the default. Solis hides itself from its own drawer.
 - Work profile apps are not listed in v1.
+
+## CI
+
+`.github/workflows/android.yml` runs the unit tests and builds a debug APK on every push to
+`main`. The APK is attached to the workflow run as `solis-launcher-debug-apk`.
