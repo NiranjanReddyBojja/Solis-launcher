@@ -60,6 +60,19 @@
         </activity>
 
         <!--
+            The Solis lock screen: shown over the system keyguard, never instead of it. Its own
+            task, so unlocking returns to whatever was open rather than to Solis home.
+        -->
+        <activity
+            android:name=".lock.LockScreenActivity"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:taskAffinity="com.solis.launcher.lock"
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode|density" />
+
+        <!--
             FocusAccessibilityService only performs two global actions on explicit user input:
             lock screen and pull down the notification shade. It does not observe, read or
             collect window content (canRetrieveWindowContent="false").

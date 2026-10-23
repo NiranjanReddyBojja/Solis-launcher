@@ -101,6 +101,19 @@ fun SettingsScreen(
             )
         }
 
+        section("lock screen")
+        item {
+            Toggle("show solis when the phone wakes", prefs.solisLockScreen, SolisColors.White) {
+                onAction(LauncherAction.SetSolisLockScreen(!prefs.solisLockScreen))
+            }
+            Text(
+                "sits on top of your normal lock. swipe up, then your pin or fingerprint as usual. " +
+                    "needs accessibility on to appear over other apps.",
+                style = MaterialTheme.typography.bodySmall,
+                color = SolisColors.Accent,
+            )
+        }
+
         section("solis pro")
         item {
             if (state.isPro) {

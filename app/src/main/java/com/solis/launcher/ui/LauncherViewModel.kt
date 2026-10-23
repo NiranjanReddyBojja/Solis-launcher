@@ -197,6 +197,7 @@ class LauncherViewModel(
             is LauncherAction.SetUseCustomQuotes -> proOnly { dataStore.setUseCustomQuotes(action.enabled) }
             is LauncherAction.SetLockscreenSync -> proOnly { dataStore.setLockscreenQuoteSync(action.enabled) }
             LauncherAction.ResetNotesApp -> viewModelScope.launch { dataStore.setNotesPackage(null) }
+            is LauncherAction.SetSolisLockScreen -> setSolisLockScreen(action.enabled)
             LauncherAction.OpenAccessibilitySettings ->
                 emit(LauncherEffect.StartActivity(intentResolver.accessibilitySettingsIntent()))
             LauncherAction.DebugTogglePro -> if (BuildConfig.DEBUG) {
@@ -321,6 +322,16 @@ class LauncherViewModel(
             if (!FocusAccessibilityService.lockScreen()) {
                 showDialog(LauncherDialog.AccessibilityDisclosure(AccessibilityPurpose.LOCK_SCREEN))
             }
+        }
+    }
+
+    // ---- Lock screen -----------------------------------------------------------------------
+
+    private fun setSolisLockScreen(enabled: Boolean) {
+        viewModelScope.launch { dataStore.setSolisLockScreen(enabled) }
+        // Without the accessibility service Android blocks the start while another app is open.
+        if (enabled && !FocusAccessibilityService.isEnabled(app)) {
+            showDialog(LauncherDialog.AccessibilityDisclosure(AccessibilityPurpose.SOLIS_LOCK_SCREEN))
         }
     }
 

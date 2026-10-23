@@ -32,6 +32,8 @@ fun AccessibilityDisclosureDialog(
                     "To put your phone to sleep after you burn an impulse, Android requires Solis to use an accessibility service."
                 AccessibilityPurpose.NOTIFICATION_SHADE ->
                     "To pull down notifications when you swipe down, Android requires Solis to use an accessibility service."
+                AccessibilityPurpose.SOLIS_LOCK_SCREEN ->
+                    "To show the Solis lock screen when your phone sleeps inside another app, Android requires Solis to use an accessibility service."
             },
             style = MaterialTheme.typography.bodyLarge,
             color = SolisColors.White,
@@ -39,7 +41,8 @@ fun AccessibilityDisclosureDialog(
         Spacer(Modifier.height(16.dp))
         Text(
             text = "Solis Focus only does two things, and only when you ask: lock the screen and " +
-                "open the notification shade.\n\nIt cannot see, read or record what is on your screen. " +
+                "open the notification shade. While it is on, Android also lets Solis show its lock " +
+                "screen.\n\nIt cannot see, read or record what is on your screen. " +
                 "Nothing is collected or shared.",
             style = MaterialTheme.typography.bodyMedium,
             color = SolisColors.Accent,

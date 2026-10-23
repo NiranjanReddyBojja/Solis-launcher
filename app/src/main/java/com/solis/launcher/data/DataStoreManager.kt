@@ -55,6 +55,7 @@ class DataStoreManager(
         val CURFEW_START = intPreferencesKey("curfew_start")
         val CURFEW_END = intPreferencesKey("curfew_end")
         val LOCKSCREEN_SYNC = booleanPreferencesKey("lockscreen_quote_sync")
+        val SOLIS_LOCK_SCREEN = booleanPreferencesKey("solis_lock_screen")
         val NOTES_PACKAGE = stringPreferencesKey("notes_package")
         val SETUP_DISMISSED = booleanPreferencesKey("launcher_setup_dismissed")
         val A11Y_DISCLOSURE = booleanPreferencesKey("a11y_disclosure_accepted")
@@ -87,6 +88,7 @@ class DataStoreManager(
                 endMinutes = p[Keys.CURFEW_END] ?: CurfewConfig().endMinutes,
             ),
             lockscreenQuoteSync = p[Keys.LOCKSCREEN_SYNC] ?: false,
+            solisLockScreen = p[Keys.SOLIS_LOCK_SCREEN] ?: false,
             notesPackage = p[Keys.NOTES_PACKAGE],
             launcherSetupDismissed = p[Keys.SETUP_DISMISSED] ?: false,
             accessibilityDisclosureAccepted = p[Keys.A11Y_DISCLOSURE] ?: false,
@@ -149,6 +151,9 @@ class DataStoreManager(
 
     suspend fun setLockscreenQuoteSync(enabled: Boolean) =
         store.edit { it[Keys.LOCKSCREEN_SYNC] = enabled }
+
+    suspend fun setSolisLockScreen(enabled: Boolean) =
+        store.edit { it[Keys.SOLIS_LOCK_SCREEN] = enabled }
 
     // ---- Curfew ----------------------------------------------------------------------------
 

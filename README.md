@@ -28,6 +28,7 @@ Install, press Home, and pick Solis (or use the in-app "set as default" prompt).
 | Home | tap clock / date | alarms / calendar |
 | Home | long-press clock | settings |
 | Home | tap quote | next quote (otherwise rotates every 6 hours) |
+| Lock screen | swipe up | hands over to the system PIN / pattern / fingerprint |
 | Drawer | long-press app | app info, uninstall, hide from carousel, launch delay |
 | Anywhere | back | closes drawer/settings; never leaves the launcher |
 
@@ -46,6 +47,8 @@ app/src/main/java/com/solis/launcher/
   system/PackageChangeReceiver.kt      Dynamic receiver for add/remove/change
   system/LauncherRoleHelper.kt RoleManager.ROLE_HOME handshake
   system/LockscreenQuoteWriter.kt      Pro: renders the quote onto the lock wallpaper
+  system/LockScreenTrigger.kt  Starts the Solis lock screen on SCREEN_OFF
+  lock/LockScreenActivity.kt   Show-when-locked activity over the keyguard
   billing/BillingManager.kt    Connect, price, purchase, acknowledge, restore
   ui/LauncherContract.kt       UiState / Action / Effect
   ui/LauncherViewModel.kt      The state machine
@@ -74,6 +77,20 @@ Debug builds show a "pro (debug builds only)" toggle in settings so you can test
   short video of the lock/shade features. The service config sets `canRetrieveWindowContent="false"`.
 - **Purchase verification**: `BillingManager` verifies on-device. For stronger protection, send
   the purchase token to a backend and verify it with the Play Developer API.
+
+## Lock screen
+
+Settings → lock screen → "show solis when the phone wakes" (off by default). Android does not
+let third-party apps replace the secure system lock screen, so Solis shows its own screen
+*on top of* it: clock, date, impulses dodged today and the current quote. Swiping up calls
+`KeyguardManager.requestDismissKeyguard`, so the system PIN/pattern/biometric prompt still
+guards the phone; Solis never sees or stores credentials.
+
+- It is started on `ACTION_SCREEN_OFF` so it is ready when the screen comes back on.
+- Android 10+ blocks background activity starts. The start is allowed while the Solis Focus
+  accessibility service is on (or Solis home was in front), so the toggle asks for it.
+- It is skipped during calls (audio mode) so it never covers the in-call screen.
+- It covers the system lock screen's notifications and camera shortcut by design.
 
 ## Notes on the spec
 

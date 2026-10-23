@@ -5,13 +5,18 @@ import android.content.Intent
 import com.solis.launcher.billing.BillingManager
 import com.solis.launcher.data.AppRepository
 import com.solis.launcher.data.DataStoreManager
+import com.solis.launcher.domain.LauncherPreferences
 import com.solis.launcher.system.IntentResolver
 import com.solis.launcher.system.LauncherRoleHelper
+import com.solis.launcher.system.LockScreenTrigger
 import com.solis.launcher.system.LockscreenQuoteWriter
 import com.solis.launcher.system.PackageChangeReceiver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class SolisApp : Application() {
@@ -40,6 +45,12 @@ class AppContainer(private val app: Application) {
     val lockscreenWriter = LockscreenQuoteWriter(app)
     val billingManager = BillingManager(app, dataStore, appScope)
 
+    /** Process-wide snapshot for code that cannot suspend, such as broadcast receivers. */
+    val preferences: StateFlow<LauncherPreferences> =
+        dataStore.preferences.stateIn(appScope, SharingStarted.Eagerly, LauncherPreferences())
+
+    private val lockScreenTrigger = LockScreenTrigger { preferences.value.solisLockScreen }
+
     private val packageReceiver = PackageChangeReceiver { action, packageName ->
         appScope.launch {
             appRepository.refresh()
@@ -51,6 +62,7 @@ class AppContainer(private val app: Application) {
 
     fun start() {
         packageReceiver.register(app)
+        lockScreenTrigger.register(app)
         appScope.launch { appRepository.refresh() }
         billingManager.start()
     }
