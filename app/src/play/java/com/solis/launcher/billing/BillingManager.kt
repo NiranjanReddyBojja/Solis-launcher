@@ -34,14 +34,9 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.resume
 
-/** Messages the paywall shows after a purchase or restore attempt. */
-sealed interface BillingEvent {
-    data object Unlocked : BillingEvent
-    data object Pending : BillingEvent
-    data object NothingToRestore : BillingEvent
-    data object Cancelled : BillingEvent
-    data class Error(val message: String) : BillingEvent
-}
+/** The `play` flavor sells Pro through Google Play Billing. */
+fun createProStore(context: Context, dataStore: DataStoreManager, scope: CoroutineScope): ProStore =
+    BillingManager(context, dataStore, scope)
 
 /**
  * Google Play Billing v7 integration for the single non-consumable "Solis Pro" lifetime unlock.
@@ -60,7 +55,7 @@ class BillingManager(
     context: Context,
     private val dataStore: DataStoreManager,
     private val scope: CoroutineScope,
-) : PurchasesUpdatedListener {
+) : ProStore, PurchasesUpdatedListener {
 
     private val client: BillingClient = BillingClient.newBuilder(context.applicationContext)
         .setListener(this)
@@ -76,13 +71,13 @@ class BillingManager(
     private val _formattedPrice = MutableStateFlow<String?>(null)
 
     /** Localized price string from Play (e.g. "$4.99", "₹399.00"), null until loaded. */
-    val formattedPrice: StateFlow<String?> = _formattedPrice.asStateFlow()
+    override val formattedPrice: StateFlow<String?> = _formattedPrice.asStateFlow()
 
     private val _events = MutableSharedFlow<BillingEvent>(extraBufferCapacity = 4)
-    val events: SharedFlow<BillingEvent> = _events.asSharedFlow()
+    override val events: SharedFlow<BillingEvent> = _events.asSharedFlow()
 
     /** Connects, loads the price and re-checks ownership. Call once at app start. */
-    fun start() {
+    override fun start() {
         scope.launch {
             if (ensureConnected()) {
                 loadProductDetails()
@@ -92,7 +87,7 @@ class BillingManager(
     }
 
     /** Opens the Play purchase sheet. Results arrive in [onPurchasesUpdated]. */
-    fun launchPurchaseFlow(activity: Activity) {
+    override fun launchPurchaseFlow(activity: Activity) {
         scope.launch {
             if (!ensureConnected()) {
                 _events.emit(BillingEvent.Error("Google Play is unavailable. Try again later."))
@@ -120,7 +115,7 @@ class BillingManager(
     }
 
     /** "Restore Purchase": asks Play what this Google account owns. */
-    fun restorePurchases() {
+    override fun restorePurchases() {
         scope.launch {
             if (!ensureConnected()) {
                 _events.emit(BillingEvent.Error("Google Play is unavailable. Try again later."))

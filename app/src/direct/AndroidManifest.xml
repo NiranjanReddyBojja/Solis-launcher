@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <!--
+            Stripe purchases return here from the checkout server's success page as
+            solis://pro?license=<signed licence>. Merged into the main MainActivity declaration.
+        -->
+        <activity android:name=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="solis" android:host="pro" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

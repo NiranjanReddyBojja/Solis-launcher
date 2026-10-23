@@ -6,15 +6,19 @@ a time, and friction between you and your impulses.
 - Kotlin + Jetpack Compose (Material3), Coroutines/Flow, DataStore Preferences
 - MVI: `UI -> LauncherViewModel -> DataStoreManager / AppRepository / system services`
 - minSdk 29 (Android 10), targetSdk/compileSdk 35 (Android 15)
-- Google Play Billing 7.1.1, one non-consumable product: `solis_pro_lifetime_499`
+- Two build flavors for buying Pro:
+  - `play`: Google Play Billing 7.1.1, one non-consumable product `solis_pro_lifetime_499`
+  - `direct`: Stripe Checkout through a small server ([server/stripe-checkout](server/stripe-checkout)),
+    for the APK you distribute outside Play. Play's payments policy doesn't allow Stripe in the Play build.
 
 ## Build
 
 Open the folder in Android Studio (Ladybug or newer) or run:
 
 ```
-./gradlew :app:assembleDebug     # APK in app/build/outputs/apk/debug
-./gradlew :app:testDebugUnitTest # pure-Kotlin rules: drawer filter, curfew, quote rotation
+./gradlew :app:assemblePlayDebug    # Play Billing build, APK in app/build/outputs/apk/play/debug
+./gradlew :app:assembleDirectDebug  # Stripe build, APK in app/build/outputs/apk/direct/debug
+./gradlew :app:testPlayDebugUnitTest :app:testDirectDebugUnitTest
 ```
 
 Install, press Home, and pick Solis (or use the in-app "set as default" prompt).
@@ -46,7 +50,11 @@ app/src/main/java/com/solis/launcher/
   system/PackageChangeReceiver.kt      Dynamic receiver for add/remove/change
   system/LauncherRoleHelper.kt RoleManager.ROLE_HOME handshake
   system/LockscreenQuoteWriter.kt      Pro: renders the quote onto the lock wallpaper
-  billing/BillingManager.kt    Connect, price, purchase, acknowledge, restore
+  billing/ProStore.kt          Purchase interface each flavor implements
+app/src/play/.../billing/BillingManager.kt     Play: connect, price, purchase, acknowledge, restore
+app/src/direct/.../billing/StripeProStore.kt   Stripe: open checkout, accept solis://pro licence link
+app/src/direct/.../billing/LicenseVerifier.kt  Offline ECDSA check of the signed licence
+server/stripe-checkout/      Cloudflare Worker: Stripe Checkout + licence signing
   ui/LauncherContract.kt       UiState / Action / Effect
   ui/LauncherViewModel.kt      The state machine
   ui/SolisRoot.kt              Screen switcher + dialog host

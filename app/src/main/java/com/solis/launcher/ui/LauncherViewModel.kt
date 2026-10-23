@@ -9,7 +9,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.solis.launcher.BuildConfig
 import com.solis.launcher.SolisApp
 import com.solis.launcher.billing.BillingEvent
-import com.solis.launcher.billing.BillingManager
+import com.solis.launcher.billing.ProStore
 import com.solis.launcher.data.AppRepository
 import com.solis.launcher.data.DataStoreManager
 import com.solis.launcher.data.QuoteBank
@@ -54,7 +54,7 @@ class LauncherViewModel(
     private val appRepository: AppRepository,
     private val intentResolver: IntentResolver,
     private val roleHelper: LauncherRoleHelper,
-    private val billingManager: BillingManager,
+    private val proStore: ProStore,
     private val lockscreenWriter: LockscreenQuoteWriter,
 ) : ViewModel() {
 
@@ -92,7 +92,7 @@ class LauncherViewModel(
         session,
         prefs,
         appRepository.apps,
-        billingManager.formattedPrice,
+        proStore.formattedPrice,
     ) { s, p, apps, price ->
         // Pro-only filters fall away automatically if the entitlement is ever revoked.
         val hidden = if (p.isPro) p.hiddenPackages else emptySet()
@@ -179,7 +179,7 @@ class LauncherViewModel(
             }
             LauncherAction.RestorePurchase -> {
                 session.update { it.copy(paywallMessage = "checking google play…") }
-                billingManager.restorePurchases()
+                proStore.restorePurchases()
             }
 
             is LauncherAction.SetCurfew -> proOnly { dataStore.setCurfew(action.config) }
@@ -413,7 +413,7 @@ class LauncherViewModel(
 
     private fun observeBilling() {
         viewModelScope.launch {
-            billingManager.events.collect { event ->
+            proStore.events.collect { event ->
                 when (event) {
                     BillingEvent.Unlocked -> {
                         if (session.value.dialog == LauncherDialog.Paywall) {
@@ -453,7 +453,7 @@ class LauncherViewModel(
                     appRepository = c.appRepository,
                     intentResolver = c.intentResolver,
                     roleHelper = c.roleHelper,
-                    billingManager = c.billingManager,
+                    proStore = c.proStore,
                     lockscreenWriter = c.lockscreenWriter,
                 )
             }

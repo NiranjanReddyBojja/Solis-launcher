@@ -22,9 +22,6 @@
     <!-- Best-effort shade pull-down fallback when the accessibility service is off. -->
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
 
-    <!-- Play Billing (also merged from the billing library, declared here for clarity). -->
-    <uses-permission android:name="com.android.vending.BILLING" />
-
     <application
         android:name=".SolisApp"
         android:allowBackup="true"

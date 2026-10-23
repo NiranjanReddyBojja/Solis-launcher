@@ -45,6 +45,7 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) proStore.handleIntent(intent)
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -76,6 +77,7 @@ class MainActivity : ComponentActivity() {
     /** Pressing Home while Solis is already in front returns to the bare home screen. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (proStore.handleIntent(intent)) return
         if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) {
             viewModel.onAction(LauncherAction.HomePressed)
         }
@@ -86,11 +88,12 @@ class MainActivity : ComponentActivity() {
             is LauncherEffect.StartActivity -> safeStart(effect.intent)
             is LauncherEffect.RequestHomeRole -> runCatching { homeRoleRequest.launch(effect.intent) }
                 .onFailure { toast("open settings → default apps → home app") }
-            LauncherEffect.LaunchPurchaseFlow ->
-                (application as SolisApp).container.billingManager.launchPurchaseFlow(this)
+            LauncherEffect.LaunchPurchaseFlow -> proStore.launchPurchaseFlow(this)
             is LauncherEffect.Toast -> toast(effect.text)
         }
     }
+
+    private val proStore get() = (application as SolisApp).container.proStore
 
     private fun safeStart(intent: Intent) {
         try {
