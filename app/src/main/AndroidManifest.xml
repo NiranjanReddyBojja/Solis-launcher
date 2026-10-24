@@ -19,6 +19,14 @@
     <!-- Writes the current harsh-truth quote onto the lock screen wallpaper. -->
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
 
+    <!--
+        Usage access, granted by the user in system settings. Read on-device only, to show how
+        long the user has stayed away from the apps they flagged as distractions.
+    -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+
     <!-- Best-effort shade pull-down fallback when the accessibility service is off. -->
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
 

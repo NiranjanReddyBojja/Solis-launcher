@@ -2,6 +2,9 @@ package com.solis.launcher.ui
 
 import android.content.Intent
 import com.solis.launcher.domain.AppEntry
+import com.solis.launcher.domain.AppSection
+import com.solis.launcher.domain.AwayStat
+import com.solis.launcher.domain.AwayTime
 import com.solis.launcher.domain.CurfewConfig
 import com.solis.launcher.domain.LauncherPreferences
 import com.solis.launcher.system.Essential
@@ -10,7 +13,7 @@ import java.time.LocalDateTime
 // MVI contract: the UI renders [LauncherUiState], sends [LauncherAction]s and performs
 // one-shot [LauncherEffect]s that need an Activity.
 
-enum class Screen { HOME, DRAWER, SETTINGS }
+enum class Screen { HOME, DRAWER, SETTINGS, MOMENT, AWAY }
 
 /** Why the accessibility disclosure is being shown, so we can explain the right thing. */
 enum class AccessibilityPurpose { LOCK_SCREEN, NOTIFICATION_SHADE }
@@ -31,18 +34,32 @@ data class LauncherUiState(
     val quote: String = "",
     val prefs: LauncherPreferences = LauncherPreferences(),
     val allApps: List<AppEntry> = emptyList(),
-    val carouselApps: List<AppEntry> = emptyList(),
-    val searchResults: List<AppEntry> = emptyList(),
-    val query: String = "",
+    /** Every visible app, A to Z, grouped by first letter. */
+    val appSections: List<AppSection> = emptyList(),
+    val visibleAppCount: Int = 0,
+    val vaultApps: List<AppEntry> = emptyList(),
+    val vaultOpen: Boolean = false,
     val curfewLocked: Boolean = false,
     /** Seconds left in the running focus session, 0 when none. */
     val focusRemainingSeconds: Long = 0L,
     val isDefaultLauncher: Boolean = true,
     val accessibilityEnabled: Boolean = false,
+    val usageAccessGranted: Boolean = false,
+    /** Wall-clock time of [now], for streak arithmetic. */
+    val nowMillis: Long = System.currentTimeMillis(),
+    /** When each flagged app was last on screen, by package name. Empty without usage access. */
+    val lastSeenMillis: Map<String, Long> = emptyMap(),
 ) {
     val focusActive: Boolean get() = focusRemainingSeconds > 0
     val drawerLocked: Boolean get() = curfewLocked || focusActive
     val showLauncherSetup: Boolean get() = !isDefaultLauncher && !prefs.launcherSetupDismissed
+
+    /** Time away from each flagged app, shortest streak first. */
+    val awayStats: List<AwayStat>
+        get() = AwayTime.stats(prefs.distractionPackages, allApps, lastSeenMillis, prefs.awayBestMillis, nowMillis)
+
+    fun awayFrom(packageName: String): Long? =
+        lastSeenMillis[packageName]?.let { AwayTime.awayMillis(it, nowMillis) }
 }
 
 sealed interface LauncherAction {
@@ -53,6 +70,8 @@ sealed interface LauncherAction {
     data object BackPressed : LauncherAction
     data object SwipeDown : LauncherAction
     data object Resumed : LauncherAction
+    data object OpenMoment : LauncherAction
+    data object OpenAway : LauncherAction
 
     // Home
     data class LaunchEssential(val essential: Essential) : LauncherAction
@@ -64,7 +83,7 @@ sealed interface LauncherAction {
     data object DismissLauncherSetup : LauncherAction
 
     // Drawer
-    data class QueryChanged(val query: String) : LauncherAction
+    data object ToggleVault : LauncherAction
     data class LaunchApp(val app: AppEntry) : LauncherAction
     data class LongPressApp(val app: AppEntry) : LauncherAction
     data class OpenAppInfo(val app: AppEntry) : LauncherAction
@@ -73,6 +92,11 @@ sealed interface LauncherAction {
     data class ToggleDistraction(val app: AppEntry) : LauncherAction
     data object CancelCountdown : LauncherAction
     data class PickNotesApp(val app: AppEntry) : LauncherAction
+
+    // Self-care and time away
+    data class SaveReflection(val prompt: String, val text: String) : LauncherAction
+    data class DeleteReflection(val atMillis: Long) : LauncherAction
+    data object OpenUsageAccess : LauncherAction
 
     // Dialogs
     data object DismissDialog : LauncherAction

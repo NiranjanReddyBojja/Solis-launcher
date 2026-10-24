@@ -38,6 +38,10 @@ data class LauncherPreferences(
     val accessibilityDisclosureAccepted: Boolean = false,
     /** Wall-clock end of the current focus session, or 0 when none is running. */
     val focusUntilMillis: Long = 0L,
+    /** Saved answers to the daily reflection prompt, newest first. */
+    val reflections: List<Reflection> = emptyList(),
+    /** Longest time away seen so far for each flagged app, by package name. */
+    val awayBestMillis: Map<String, Long> = emptyMap(),
 ) {
     companion object {
         const val MIN_LAUNCH_DELAY_SECONDS = 5

@@ -12,15 +12,18 @@ import com.solis.launcher.data.DataStoreManager
 import com.solis.launcher.data.QuoteBank
 import com.solis.launcher.domain.AppEntry
 import com.solis.launcher.domain.AppFilter
+import com.solis.launcher.domain.AwayTime
 import com.solis.launcher.domain.CurfewPolicy
 import com.solis.launcher.domain.FocusSession
 import com.solis.launcher.domain.LauncherPreferences
 import com.solis.launcher.domain.QuoteRotation
+import com.solis.launcher.domain.Reflection
 import com.solis.launcher.system.FocusAccessibilityService
 import com.solis.launcher.system.IntentResolver
 import com.solis.launcher.system.LauncherRoleHelper
 import com.solis.launcher.system.LockscreenQuoteWriter
 import com.solis.launcher.system.Resolution
+import com.solis.launcher.system.UsageAccess
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -53,15 +56,18 @@ class LauncherViewModel(
     private val intentResolver: IntentResolver,
     private val roleHelper: LauncherRoleHelper,
     private val lockscreenWriter: LockscreenQuoteWriter,
+    private val usageAccess: UsageAccess,
 ) : ViewModel() {
 
     /** UI-only state that is not persisted. */
     private data class Session(
         val screen: Screen = Screen.HOME,
         val dialog: LauncherDialog? = null,
-        val query: String = "",
+        val vaultOpen: Boolean = false,
         val isDefaultLauncher: Boolean = true,
         val accessibilityEnabled: Boolean = false,
+        val usageAccessGranted: Boolean = false,
+        val lastSeenMillis: Map<String, Long> = emptyMap(),
     )
 
     private val session = MutableStateFlow(Session())
@@ -82,6 +88,7 @@ class LauncherViewModel(
 
     private var countdownJob: Job? = null
     private var roleRequestFailed = false
+    private var usageJob: Job? = null
 
     /** Everything except the clock, so app filtering is not redone on every one-second tick. */
     private val snapshot: Flow<LauncherUiState> = combine(
@@ -90,17 +97,21 @@ class LauncherViewModel(
         appRepository.apps,
     ) { s, p, apps ->
         val hidden = p.hiddenPackages
+        val visible = AppFilter.visible(apps, hidden)
         LauncherUiState(
             screen = s.screen,
             dialog = s.dialog,
             quote = currentQuote(p),
             prefs = p,
             allApps = apps,
-            carouselApps = AppFilter.carousel(apps, hidden),
-            searchResults = AppFilter.search(apps, hidden, s.query),
-            query = s.query,
+            appSections = AppFilter.sections(visible),
+            visibleAppCount = visible.size,
+            vaultApps = AppFilter.vault(apps, hidden),
+            vaultOpen = s.vaultOpen,
             isDefaultLauncher = s.isDefaultLauncher,
             accessibilityEnabled = s.accessibilityEnabled,
+            usageAccessGranted = s.usageAccessGranted,
+            lastSeenMillis = s.lastSeenMillis,
         )
     }
 
@@ -109,6 +120,7 @@ class LauncherViewModel(
         val today = now.toLocalDate().toString()
         base.copy(
             now = now,
+            nowMillis = System.currentTimeMillis(),
             // Zero the metric at midnight without waiting for a DataStore write.
             prefs = if (p.dodgedDate == today || p.dodgedToday == 0) p else p.copy(dodgedToday = 0),
             curfewLocked = CurfewPolicy.isLocked(p.curfew, now.hour * 60 + now.minute),
@@ -120,11 +132,17 @@ class LauncherViewModel(
         refreshSystemStatus()
         rotateQuotesPeriodically()
         syncLockscreenQuote()
+        refreshUsageWhenFlagsChange()
     }
 
     fun onAction(action: LauncherAction) {
         when (action) {
-            LauncherAction.OpenDrawer -> session.update { it.copy(screen = Screen.DRAWER, query = "") }
+            LauncherAction.OpenDrawer -> session.update { it.copy(screen = Screen.DRAWER, vaultOpen = false) }
+            LauncherAction.OpenMoment -> session.update { it.copy(screen = Screen.MOMENT, dialog = null) }
+            LauncherAction.OpenAway -> {
+                session.update { it.copy(screen = Screen.AWAY, dialog = null) }
+                refreshUsage()
+            }
             LauncherAction.OpenSettings -> session.update { it.copy(screen = Screen.SETTINGS, dialog = null) }
             LauncherAction.HomePressed -> goHome()
             LauncherAction.BackPressed -> onBack()
@@ -142,7 +160,7 @@ class LauncherViewModel(
             }
             LauncherAction.DismissLauncherSetup -> viewModelScope.launch { dataStore.setLauncherSetupDismissed(true) }
 
-            is LauncherAction.QueryChanged -> session.update { it.copy(query = action.query) }
+            LauncherAction.ToggleVault -> session.update { it.copy(vaultOpen = !it.vaultOpen) }
             is LauncherAction.LaunchApp -> launchApp(action.app)
             is LauncherAction.LongPressApp -> showDialog(LauncherDialog.AppActions(action.app))
             is LauncherAction.OpenAppInfo -> {
@@ -157,6 +175,10 @@ class LauncherViewModel(
             is LauncherAction.ToggleDistraction -> toggleDistraction(action.app)
             LauncherAction.CancelCountdown -> cancelCountdown()
             is LauncherAction.PickNotesApp -> pickNotesApp(action.app)
+
+            is LauncherAction.SaveReflection -> saveReflection(action)
+            is LauncherAction.DeleteReflection -> persist { dataStore.deleteReflection(action.atMillis) }
+            LauncherAction.OpenUsageAccess -> emit(LauncherEffect.StartActivity(usageAccess.settingsIntent()))
 
             LauncherAction.DismissDialog -> dismissDialog()
             LauncherAction.AcceptAccessibilityDisclosure -> {
@@ -191,15 +213,15 @@ class LauncherViewModel(
 
     private fun goHome() {
         cancelCountdownSilently()
-        session.update { it.copy(screen = Screen.HOME, dialog = null, query = "") }
+        session.update { it.copy(screen = Screen.HOME, dialog = null, vaultOpen = false) }
     }
 
     private fun onBack() {
         val s = session.value
         when {
             s.dialog != null -> dismissDialog()
-            s.screen == Screen.SETTINGS -> session.update { it.copy(screen = Screen.HOME) }
-            s.screen == Screen.DRAWER -> session.update { it.copy(screen = Screen.HOME, query = "") }
+            s.screen == Screen.DRAWER -> session.update { it.copy(screen = Screen.HOME, vaultOpen = false) }
+            s.screen != Screen.HOME -> session.update { it.copy(screen = Screen.HOME) }
             // On the root screen, back does nothing: the launcher must never exit.
             else -> Unit
         }
@@ -221,8 +243,10 @@ class LauncherViewModel(
             it.copy(
                 isDefaultLauncher = roleHelper.isDefaultLauncher(),
                 accessibilityEnabled = FocusAccessibilityService.isEnabled(app),
+                usageAccessGranted = usageAccess.isGranted(),
             )
         }
+        refreshUsage()
     }
 
     private fun expandShade() {
@@ -261,7 +285,7 @@ class LauncherViewModel(
         // Reset behind the launched app so coming back always lands on the calm home screen.
         viewModelScope.launch {
             delay(RESET_AFTER_LAUNCH_MS)
-            session.update { it.copy(screen = Screen.HOME, query = "", dialog = null) }
+            session.update { it.copy(screen = Screen.HOME, dialog = null, vaultOpen = false) }
         }
     }
 
@@ -327,7 +351,7 @@ class LauncherViewModel(
         viewModelScope.launch { dataStore.setHidden(app.packageName, hide) }
         emit(
             LauncherEffect.Toast(
-                if (hide) "hidden. type \"${app.label}\" to find it" else "back in the carousel",
+                if (hide) "moved to the vault, at the end of the list" else "back in the list",
             ),
         )
     }
@@ -345,8 +369,41 @@ class LauncherViewModel(
 
     private fun startFocus(minutes: Int) {
         persist { dataStore.setFocusUntil(FocusSession.endsAt(System.currentTimeMillis(), minutes)) }
-        session.update { it.copy(screen = Screen.HOME, query = "", dialog = null) }
-        emit(LauncherEffect.Toast("focus for $minutes min. the drawer is closed."))
+        session.update { it.copy(screen = Screen.HOME, dialog = null, vaultOpen = false) }
+        emit(LauncherEffect.Toast("focus for $minutes min. the app list is closed."))
+    }
+
+    // ---- Self-care and time away --------------------------------------------------------------
+
+    private fun saveReflection(action: LauncherAction.SaveReflection) {
+        if (action.text.isBlank()) return
+        persist { dataStore.addReflection(Reflection(System.currentTimeMillis(), action.prompt, action.text)) }
+        emit(LauncherEffect.Toast("kept. thank you for checking in."))
+    }
+
+    /**
+     * Re-reads when each flagged app was last on screen and raises the stored personal bests.
+     * The launcher resumes every time the user comes home, so a streak is recorded at most one
+     * home-visit late.
+     */
+    private fun refreshUsage() {
+        usageJob?.cancel()
+        usageJob = viewModelScope.launch {
+            val flagged = prefs.value.distractionPackages
+            val now = System.currentTimeMillis()
+            val lastSeen = usageAccess.lastSeen(flagged, now)
+            session.update { it.copy(lastSeenMillis = lastSeen, usageAccessGranted = usageAccess.isGranted()) }
+            val best = prefs.value.awayBestMillis
+            val raised = lastSeen.mapValues { (_, seen) -> AwayTime.awayMillis(seen, now) }
+                .filter { (pkg, away) -> away > (best[pkg] ?: 0L) + AwayTime.MINUTE }
+            if (raised.isNotEmpty()) dataStore.raiseAwayBest(raised)
+        }
+    }
+
+    private fun refreshUsageWhenFlagsChange() {
+        viewModelScope.launch {
+            prefs.map { it.distractionPackages }.distinctUntilChanged().collectLatest { refreshUsage() }
+        }
     }
 
     private fun persist(block: suspend () -> Unit) {
@@ -414,6 +471,7 @@ class LauncherViewModel(
                     intentResolver = c.intentResolver,
                     roleHelper = c.roleHelper,
                     lockscreenWriter = c.lockscreenWriter,
+                    usageAccess = c.usageAccess,
                 )
             }
         }

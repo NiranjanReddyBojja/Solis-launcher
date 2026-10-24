@@ -6,31 +6,39 @@ import org.junit.Test
 class AppFilterTest {
 
     private val bank = AppEntry("Bank", "com.bank", "Main")
-    private val books = AppEntry("Books", "com.books", "Main")
+    private val books = AppEntry("books", "com.books", "Main")
     private val chrome = AppEntry("Chrome", "com.chrome", "Main")
-    private val apps = listOf(bank, books, chrome)
+    private val apps = listOf(chrome, bank, books)
     private val hidden = setOf("com.bank")
 
     @Test
-    fun `carousel excludes hidden apps`() {
-        assertEquals(listOf(books, chrome), AppFilter.carousel(apps, hidden))
+    fun `visible list excludes the vault and is alphabetical ignoring case`() {
+        assertEquals(listOf(books, chrome), AppFilter.visible(apps, hidden))
+        assertEquals(listOf(bank, books, chrome), AppFilter.visible(apps, emptySet()))
     }
 
     @Test
-    fun `partial query does not reveal hidden apps`() {
-        assertEquals(listOf(books), AppFilter.search(apps, hidden, "b"))
-        assertEquals(emptyList<AppEntry>(), AppFilter.search(apps, hidden, "ban"))
+    fun `vault holds only hidden apps`() {
+        assertEquals(listOf(bank), AppFilter.vault(apps, hidden))
     }
 
     @Test
-    fun `exact name reveals hidden app regardless of case and spaces`() {
-        assertEquals(listOf(bank), AppFilter.search(apps, hidden, "  bAnK "))
+    fun `accents sort and file under their base letter`() {
+        val eclair = AppEntry("Éclair", "com.eclair", "Main")
+        val email = AppEntry("Email", "com.email", "Main")
+        val sorted = AppFilter.visible(listOf(email, eclair), emptySet())
+        assertEquals(listOf(eclair, email), sorted)
+        assertEquals(listOf(AppSection('E', sorted)), AppFilter.sections(sorted))
     }
 
     @Test
-    fun `prefix matches sort before substring matches`() {
-        val maps = AppEntry("Maps", "com.maps", "Main")
-        val gmail = AppEntry("Gmail", "com.gmail", "Main")
-        assertEquals(listOf(maps, gmail), AppFilter.search(listOf(gmail, maps), emptySet(), "ma"))
+    fun `digits and symbols go under the other heading, first`() {
+        val game = AppEntry("2048", "com.game", "Main")
+        val sorted = AppFilter.visible(listOf(chrome, game, bank), emptySet())
+        assertEquals(
+            listOf('#', 'B', 'C'),
+            AppFilter.sections(sorted).map { it.letter },
+        )
+        assertEquals(AppFilter.OTHER, AppFilter.letterOf("  "))
     }
 }

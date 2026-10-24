@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.solis.launcher.domain.AwayTime
 import com.solis.launcher.domain.FocusSession
 import com.solis.launcher.system.Essential
 import com.solis.launcher.ui.LauncherAction
@@ -50,8 +51,9 @@ private val PINNED = listOf(
 private val SWIPE_THRESHOLD = 72.dp
 
 /**
- * The root screen: clock, date, dodged metric, one quote, five essentials, and the impulse
- * button. Swiping up anywhere opens the focus drawer; swiping down pulls the notification shade.
+ * The root screen: clock, date, dodged metric, time away, one quote, five essentials, the
+ * self-care and time-away links, and the impulse button. Swiping up anywhere opens the app list;
+ * swiping down pulls the notification shade.
  */
 @Composable
 fun HomeScreen(
@@ -97,7 +99,23 @@ fun HomeScreen(
             Spacer(Modifier.weight(1f))
 
             PinnedEssentials(onAction)
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextAction(
+                    text = "~ a moment",
+                    onClick = { onAction(LauncherAction.OpenMoment) },
+                    color = SolisColors.Accent,
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                Spacer(Modifier.weight(1f))
+                TextAction(
+                    text = "time away ◷",
+                    onClick = { onAction(LauncherAction.OpenAway) },
+                    color = SolisColors.Accent,
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+            Spacer(Modifier.height(16.dp))
 
             SolisOutlinedButton(
                 text = "[ ⚡ INTERRUPT IMPULSE ]",
@@ -157,6 +175,19 @@ private fun TopBar(state: LauncherUiState, onAction: (LauncherAction) -> Unit) {
             style = MaterialTheme.typography.labelMedium,
             color = SolisColors.Accent,
         )
+        // The shortest streak is the honest one: time since any flagged app was last opened.
+        state.awayStats.firstOrNull()?.let { shortest ->
+            Text(
+                text = "[${AwayTime.format(shortest.awayMillis)} away from ${shortest.app.label.lowercase()}]",
+                style = MaterialTheme.typography.labelMedium,
+                color = SolisColors.Accent,
+                modifier = Modifier.combinedClickable(
+                    interactionSource = noRipple,
+                    indication = null,
+                    onClick = { onAction(LauncherAction.OpenAway) },
+                ),
+            )
+        }
         if (state.focusActive) {
             Text(
                 text = "[focusing · ${FocusSession.format(state.focusRemainingSeconds)} left]",

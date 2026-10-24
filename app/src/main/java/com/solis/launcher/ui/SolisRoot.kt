@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.solis.launcher.ui.away.AwayScreen
 import com.solis.launcher.ui.dialogs.AccessibilityDisclosureDialog
 import com.solis.launcher.ui.dialogs.AppActionsSheet
 import com.solis.launcher.ui.dialogs.ImpulseInterceptorDialog
@@ -18,6 +19,7 @@ import com.solis.launcher.ui.dialogs.LaunchCountdownDialog
 import com.solis.launcher.ui.dialogs.NotesPickerDialog
 import com.solis.launcher.ui.drawer.FocusDrawer
 import com.solis.launcher.ui.home.HomeScreen
+import com.solis.launcher.ui.moment.MomentScreen
 import com.solis.launcher.ui.settings.SettingsScreen
 import com.solis.launcher.ui.theme.SolisColors
 
@@ -40,6 +42,8 @@ fun SolisRoot(state: LauncherUiState, onAction: (LauncherAction) -> Unit) {
                 Screen.HOME -> HomeScreen(state, onAction)
                 Screen.DRAWER -> FocusDrawer(state, onAction)
                 Screen.SETTINGS -> SettingsScreen(state, onAction)
+                Screen.MOMENT -> MomentScreen(state, onAction)
+                Screen.AWAY -> AwayScreen(state, onAction)
             }
         }
 
@@ -76,6 +80,7 @@ fun SolisRoot(state: LauncherUiState, onAction: (LauncherAction) -> Unit) {
                 app = dialog.app,
                 totalSeconds = dialog.totalSeconds,
                 remainingSeconds = dialog.remainingSeconds,
+                awayMillis = state.awayFrom(dialog.app.packageName),
                 onCancel = { onAction(LauncherAction.CancelCountdown) },
             )
         }

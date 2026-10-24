@@ -11,15 +11,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.unit.dp
 import com.solis.launcher.domain.AppEntry
+import com.solis.launcher.domain.AwayTime
 import com.solis.launcher.ui.theme.SolisColors
 import com.solis.launcher.ui.theme.SolisOutlinedButton
 
-/** The forced pause before a flagged distraction app opens. Backing out counts as a dodge. */
+/**
+ * The forced pause before a flagged distraction app opens. Backing out counts as a dodge.
+ * Shows the current streak away from the app, when usage access is granted.
+ */
 @Composable
 fun LaunchCountdownDialog(
     app: AppEntry,
     totalSeconds: Int,
     remainingSeconds: Int,
+    awayMillis: Long?,
     onCancel: () -> Unit,
 ) {
     SolisFullScreenDialog(onDismiss = onCancel) {
@@ -38,6 +43,14 @@ fun LaunchCountdownDialog(
         )
         Spacer(Modifier.height(24.dp))
         Text("is this a choice, or a reflex?", style = MaterialTheme.typography.titleMedium, color = SolisColors.White)
+        if (awayMillis != null && awayMillis >= AwayTime.MINUTE) {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "you've stayed away for ${AwayTime.format(awayMillis)}. opening it starts the count again.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = SolisColors.Accent,
+            )
+        }
         Spacer(Modifier.weight(1f))
         SolisOutlinedButton("[ never mind ]", onCancel, modifier = Modifier.fillMaxWidth())
     }

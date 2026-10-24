@@ -8,6 +8,7 @@ import com.solis.launcher.system.IntentResolver
 import com.solis.launcher.system.LauncherRoleHelper
 import com.solis.launcher.system.LockscreenQuoteWriter
 import com.solis.launcher.system.PackageChangeReceiver
+import com.solis.launcher.system.UsageAccess
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -37,6 +38,7 @@ class AppContainer(private val app: Application) {
     val intentResolver = IntentResolver(app)
     val roleHelper = LauncherRoleHelper(app)
     val lockscreenWriter = LockscreenQuoteWriter(app)
+    val usageAccess = UsageAccess(app)
 
     private val packageReceiver = PackageChangeReceiver { action, packageName ->
         appScope.launch {
