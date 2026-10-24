@@ -41,7 +41,7 @@ private const val CURFEW_STEP_MINUTES = 15
 private const val DELAY_STEP_SECONDS = 5
 private const val MINUTES_PER_DAY = 24 * 60
 
-/** Settings, reached by long-pressing the clock or from the drawer. Everything here is free. */
+/** Settings, reached by long-pressing the clock or from the app list. Everything here is free. */
 @Composable
 fun SettingsScreen(
     state: LauncherUiState,
@@ -89,6 +89,12 @@ fun SettingsScreen(
                 onAction = { onAction(LauncherAction.OpenAccessibilitySettings) },
             )
             StatusRow(
+                label = "usage access",
+                value = if (state.usageAccessGranted) "on" else "off",
+                actionLabel = "open",
+                onAction = { onAction(LauncherAction.OpenUsageAccess) },
+            )
+            StatusRow(
                 label = "notes app",
                 value = prefs.notesPackage?.let { pkg ->
                     state.allApps.firstOrNull { it.packageName == pkg }?.label?.lowercase() ?: pkg
@@ -102,7 +108,7 @@ fun SettingsScreen(
         item {
             if (state.focusActive) {
                 Text(
-                    "drawer closed for ${FocusSession.format(state.focusRemainingSeconds)}.",
+                    "app list closed for ${FocusSession.format(state.focusRemainingSeconds)}.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = color,
                 )
@@ -110,7 +116,7 @@ fun SettingsScreen(
                     color = SolisColors.Accent, style = MaterialTheme.typography.labelLarge)
             } else {
                 Text(
-                    "close the drawer for a while. home and the essentials keep working.",
+                    "close the app list for a while. home and the essentials keep working.",
                     style = MaterialTheme.typography.bodySmall,
                     color = SolisColors.Accent,
                 )
@@ -129,7 +135,7 @@ fun SettingsScreen(
         section("curfew")
         item {
             val curfew = prefs.curfew
-            Toggle("lock the drawer at night", curfew.enabled, color) {
+            Toggle("lock the app list at night", curfew.enabled, color) {
                 onAction(LauncherAction.SetCurfew(curfew.copy(enabled = !curfew.enabled)))
             }
             Stepper(
@@ -164,13 +170,13 @@ fun SettingsScreen(
                 plusEnabled = prefs.launchDelaySeconds < LauncherPreferences.MAX_LAUNCH_DELAY_SECONDS,
             )
             Text(
-                "${prefs.distractionPackages.size} apps flagged. long-press an app in the drawer to flag it.",
+                "${prefs.distractionPackages.size} apps flagged. long-press an app in the list to flag it. solis counts your time away from flagged apps.",
                 style = MaterialTheme.typography.bodySmall,
                 color = SolisColors.Accent,
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "${prefs.hiddenPackages.size} apps in the vault.",
+                "${prefs.hiddenPackages.size} apps in the vault, at the end of the app list.",
                 style = MaterialTheme.typography.bodySmall,
                 color = SolisColors.Accent,
             )

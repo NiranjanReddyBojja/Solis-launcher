@@ -55,7 +55,7 @@ fun AppActionsSheet(
             TextAction("app info", onAppInfo)
             TextAction("uninstall", onUninstall)
             TextAction(
-                text = if (isHidden) "show in carousel" else "hide from carousel",
+                text = if (isHidden) "take out of the vault" else "move to the vault",
                 onClick = onToggleHidden,
             )
             TextAction(

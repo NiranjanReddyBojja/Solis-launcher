@@ -14,7 +14,10 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStoreFile
 import com.solis.launcher.domain.CurfewConfig
+import com.solis.launcher.domain.AwayTime
 import com.solis.launcher.domain.LauncherPreferences
+import com.solis.launcher.domain.Reflection
+import com.solis.launcher.domain.SelfCare
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -24,7 +27,7 @@ import java.time.LocalDate
 
 /**
  * Single source of truth for everything Solis persists: settings, pinned/hidden apps, quotes,
- * the dodged-impulse metric and the current focus session.
+ * the dodged-impulse metric, the current focus session, reflections and time-away bests.
  */
 class DataStoreManager(
     context: Context,
@@ -54,6 +57,8 @@ class DataStoreManager(
         val SETUP_DISMISSED = booleanPreferencesKey("launcher_setup_dismissed")
         val A11Y_DISCLOSURE = booleanPreferencesKey("a11y_disclosure_accepted")
         val FOCUS_UNTIL = longPreferencesKey("focus_until")
+        val REFLECTIONS = stringPreferencesKey("reflections")
+        val AWAY_BEST = stringPreferencesKey("away_best")
     }
 
     val preferences: Flow<LauncherPreferences> = store.data
@@ -86,6 +91,8 @@ class DataStoreManager(
             launcherSetupDismissed = p[Keys.SETUP_DISMISSED] ?: false,
             accessibilityDisclosureAccepted = p[Keys.A11Y_DISCLOSURE] ?: false,
             focusUntilMillis = p[Keys.FOCUS_UNTIL] ?: 0L,
+            reflections = SelfCare.decode(p[Keys.REFLECTIONS]),
+            awayBestMillis = AwayTime.decodeBest(p[Keys.AWAY_BEST]),
         )
     }
 
@@ -107,6 +114,23 @@ class DataStoreManager(
     /** Pass 0 to end the session. */
     suspend fun setFocusUntil(untilMillis: Long) = store.edit { it[Keys.FOCUS_UNTIL] = untilMillis }
 
+    // ---- Reflections and time away ----------------------------------------------------------
+
+    suspend fun addReflection(entry: Reflection) = store.edit {
+        it[Keys.REFLECTIONS] = SelfCare.encode(SelfCare.add(SelfCare.decode(it[Keys.REFLECTIONS]), entry))
+    }
+
+    suspend fun deleteReflection(atMillis: Long) = store.edit { p ->
+        p[Keys.REFLECTIONS] = SelfCare.encode(SelfCare.decode(p[Keys.REFLECTIONS]).filterNot { it.atMillis == atMillis })
+    }
+
+    /** Raises the stored bests where the new values are longer; never lowers one. */
+    suspend fun raiseAwayBest(candidates: Map<String, Long>) = store.edit { p ->
+        val best = AwayTime.decodeBest(p[Keys.AWAY_BEST]).toMutableMap()
+        candidates.forEach { (pkg, millis) -> if (millis > (best[pkg] ?: 0L)) best[pkg] = millis }
+        p[Keys.AWAY_BEST] = AwayTime.encodeBest(best)
+    }
+
     // ---- App vault and distraction flags ---------------------------------------------------
 
     suspend fun setHidden(packageName: String, hidden: Boolean) =
@@ -122,11 +146,12 @@ class DataStoreManager(
         )
     }
 
-    /** Forgets vault/flag/notes entries for a package that was uninstalled. */
+    /** Forgets vault/flag/notes/time-away entries for a package that was uninstalled. */
     suspend fun forgetPackage(packageName: String) = store.edit { p ->
         p[Keys.HIDDEN]?.let { p[Keys.HIDDEN] = it - packageName }
         p[Keys.DISTRACTIONS]?.let { p[Keys.DISTRACTIONS] = it - packageName }
         if (p[Keys.NOTES_PACKAGE] == packageName) p.remove(Keys.NOTES_PACKAGE)
+        p[Keys.AWAY_BEST]?.let { p[Keys.AWAY_BEST] = AwayTime.encodeBest(AwayTime.decodeBest(it) - packageName) }
     }
 
     // ---- Quotes ----------------------------------------------------------------------------

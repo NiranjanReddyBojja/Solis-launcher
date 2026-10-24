@@ -6,11 +6,13 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.solis.launcher.R
 
-/** The whole palette. Nothing else is allowed on screen. */
+/** The whole palette: black, white and two greys. Nothing else is allowed on screen. */
 object SolisColors {
     val Black = Color(0xFF000000)
     val White = Color(0xFFFFFFFF)
@@ -18,7 +20,16 @@ object SolisColors {
     val Dim = Color(0xFF222222)
 }
 
-private val Mono = FontFamily.Monospace
+/**
+ * JetBrains Mono (SIL Open Font License, see assets/licenses), bundled so every phone shows the
+ * same clean screen-style monospace instead of whatever the OEM ships as monospace.
+ */
+private val Mono = FontFamily(
+    Font(R.font.jetbrains_mono_light, FontWeight.Light),
+    Font(R.font.jetbrains_mono_regular, FontWeight.Normal),
+    Font(R.font.jetbrains_mono_medium, FontWeight.Medium),
+    Font(R.font.jetbrains_mono_bold, FontWeight.Bold),
+)
 
 private fun mono(size: Int, weight: FontWeight = FontWeight.Normal, letterSpacing: Float = 0f) =
     TextStyle(
