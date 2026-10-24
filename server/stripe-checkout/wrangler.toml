@@ -1,7 +1,0 @@
-name = "solis-checkout"
-main = "src/index.js"
-compatibility_date = "2025-06-01"
-
-[vars]
-# The one-time $4.99 price from the Stripe dashboard (Product catalog → Solis Pro → price ID).
-STRIPE_PRICE_ID = "price_REPLACE_ME"

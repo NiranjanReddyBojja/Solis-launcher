@@ -16,24 +16,6 @@ android {
         versionName = "1.0.0"
     }
 
-    // play: Google Play Billing, for the Play Store listing (Play's payments policy requires it).
-    // direct: Stripe Checkout, for the APK distributed outside Play. See server/stripe-checkout.
-    flavorDimensions += "store"
-    productFlavors {
-        create("play") {
-            dimension = "store"
-        }
-        create("direct") {
-            dimension = "store"
-            versionNameSuffix = "-direct"
-            // Set both in ~/.gradle/gradle.properties or with -P. Neither is a secret.
-            val checkoutUrl = providers.gradleProperty("solis.checkoutUrl").getOrElse("")
-            val publicKey = providers.gradleProperty("solis.licensePublicKey").getOrElse("")
-            buildConfigField("String", "CHECKOUT_URL", "\"$checkoutUrl\"")
-            buildConfigField("String", "LICENSE_PUBLIC_KEY", "\"$publicKey\"")
-        }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -76,7 +58,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     implementation(libs.androidx.datastore.preferences)
-    "playImplementation"(libs.billing.ktx)
+    implementation(libs.billing.ktx)
     implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.junit)

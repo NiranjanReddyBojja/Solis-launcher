@@ -18,7 +18,6 @@ import com.solis.launcher.domain.LauncherPreferences
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.io.IOException
 import java.time.LocalDate
@@ -27,9 +26,9 @@ import java.time.LocalDate
  * Single source of truth for everything Solis persists: settings, pinned/hidden apps, quotes,
  * the dodged-impulse metric and the cached Pro entitlement.
  *
- * Pro status here is a cache. The flavor's [com.solis.launcher.billing.ProStore] re-verifies it on
- * every start (against Google Play, or the signed Stripe licence) and overwrites it, so editing the
- * file on a rooted device does not survive the next check.
+ * Pro status here is a cache. [com.solis.launcher.billing.BillingManager] re-verifies it against
+ * Google Play on every start and overwrites it, so editing the file on a rooted device does not
+ * survive the next successful Play query.
  */
 class DataStoreManager(
     context: Context,
@@ -59,7 +58,6 @@ class DataStoreManager(
         val NOTES_PACKAGE = stringPreferencesKey("notes_package")
         val SETUP_DISMISSED = booleanPreferencesKey("launcher_setup_dismissed")
         val A11Y_DISCLOSURE = booleanPreferencesKey("a11y_disclosure_accepted")
-        val PRO_LICENSE = stringPreferencesKey("pro_license")
     }
 
     val preferences: Flow<LauncherPreferences> = store.data
@@ -111,16 +109,6 @@ class DataStoreManager(
     // ---- Pro entitlement -------------------------------------------------------------------
 
     suspend fun setPro(isPro: Boolean) = store.edit { it[Keys.IS_PRO] = isPro }
-
-    /** Signed licence from a direct (Stripe) purchase, or null. Unused by the Play build. */
-    suspend fun proLicense(): String? =
-        store.data.catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
-            .map { it[Keys.PRO_LICENSE] }
-            .first()
-
-    suspend fun setProLicense(token: String?) = store.edit {
-        if (token == null) it.remove(Keys.PRO_LICENSE) else it[Keys.PRO_LICENSE] = token
-    }
 
     // ---- App vault and distraction flags ---------------------------------------------------
 

@@ -2,7 +2,7 @@ package com.solis.launcher
 
 import android.app.Application
 import android.content.Intent
-import com.solis.launcher.billing.createProStore
+import com.solis.launcher.billing.BillingManager
 import com.solis.launcher.data.AppRepository
 import com.solis.launcher.data.DataStoreManager
 import com.solis.launcher.system.IntentResolver
@@ -38,8 +38,7 @@ class AppContainer(private val app: Application) {
     val intentResolver = IntentResolver(app)
     val roleHelper = LauncherRoleHelper(app)
     val lockscreenWriter = LockscreenQuoteWriter(app)
-    /** Play Billing in the `play` flavor, Stripe in the `direct` flavor. */
-    val proStore = createProStore(app, dataStore, appScope)
+    val billingManager = BillingManager(app, dataStore, appScope)
 
     private val packageReceiver = PackageChangeReceiver { action, packageName ->
         appScope.launch {
@@ -53,6 +52,6 @@ class AppContainer(private val app: Application) {
     fun start() {
         packageReceiver.register(app)
         appScope.launch { appRepository.refresh() }
-        proStore.start()
+        billingManager.start()
     }
 }
