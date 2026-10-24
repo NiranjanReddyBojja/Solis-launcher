@@ -6,7 +6,7 @@ a time, and friction between you and your impulses.
 - Kotlin + Jetpack Compose (Material3), Coroutines/Flow, DataStore Preferences
 - MVI: `UI -> LauncherViewModel -> DataStoreManager / AppRepository / system services`
 - minSdk 29 (Android 10), targetSdk/compileSdk 35 (Android 15)
-- Google Play Billing 7.1.1, one non-consumable product: `solis_pro_lifetime_499`
+- Free: every feature is available to everyone, no purchases or accounts
 
 ## Build
 
@@ -38,42 +38,36 @@ app/src/main/java/com/solis/launcher/
   MainActivity.kt              Renders state, forwards actions, performs Activity effects
   SolisApp.kt                  Application + manual dependency container
   domain/                      Pure Kotlin: models, AppFilter, CurfewPolicy, QuoteRotation
-  data/DataStoreManager.kt     All persistence: prefs, vault, quotes, metrics, Pro cache
+  data/DataStoreManager.kt     All persistence: prefs, vault, quotes, metrics, focus session
   data/AppRepository.kt        Installed launchable apps (LauncherApps)
   data/QuoteBank.kt            Default harsh truths
   system/IntentResolver.kt     OEM-agnostic phone/messages/notes/calendar/camera/alarm
   system/FocusAccessibilityService.kt  Lock screen + expand shade, nothing else
   system/PackageChangeReceiver.kt      Dynamic receiver for add/remove/change
   system/LauncherRoleHelper.kt RoleManager.ROLE_HOME handshake
-  system/LockscreenQuoteWriter.kt      Pro: renders the quote onto the lock wallpaper
-  billing/BillingManager.kt    Connect, price, purchase, acknowledge, restore
+  system/LockscreenQuoteWriter.kt      Renders the quote onto the lock wallpaper
   ui/LauncherContract.kt       UiState / Action / Effect
   ui/LauncherViewModel.kt      The state machine
   ui/SolisRoot.kt              Screen switcher + dialog host
   ui/home, ui/drawer, ui/dialogs, ui/settings, ui/theme
 ```
 
-## Pro features (gated in the ViewModel)
+## Features (all free)
 
 1. **App vault**: hidden apps leave the carousel but appear when their exact name is typed.
 2. **Curfew**: the drawer is closed between two configured times (wraps past midnight).
    Home and the five essentials keep working.
 3. **Your own truths**: custom quote editor, plus optional lock-screen wallpaper sync.
 4. **Launch delay**: flagged apps wait 5–30 s behind a countdown. Backing out counts as a dodge.
-
-If Play ever reports the purchase as gone (refund), every Pro filter switches off automatically.
-Debug builds show a "pro (debug builds only)" toggle in settings so you can test without Play.
+5. **Focus sessions**: close the drawer for 25, 50 or 90 minutes from settings. Home shows the
+   time left; the essentials keep working. "end early" in settings stops it.
 
 ## Before publishing on Google Play
 
-- **In-app product**: create a one-time product with ID `solis_pro_lifetime_499` at $4.99.
-  Billing only works for builds installed from a Play testing track with a licence tester account.
 - **QUERY_ALL_PACKAGES**: fill the permissions declaration form, core use case "launcher".
 - **Accessibility**: Solis shows a prominent disclosure before opening accessibility settings.
   You must also complete the Accessibility API declaration in the Play Console and include a
   short video of the lock/shade features. The service config sets `canRetrieveWindowContent="false"`.
-- **Purchase verification**: `BillingManager` verifies on-device. For stronger protection, send
-  the purchase token to a backend and verify it with the Play Developer API.
 
 ## Notes on the spec
 

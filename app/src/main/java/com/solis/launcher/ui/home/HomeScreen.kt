@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.solis.launcher.domain.FocusSession
 import com.solis.launcher.system.Essential
 import com.solis.launcher.ui.LauncherAction
 import com.solis.launcher.ui.LauncherUiState
@@ -156,6 +157,13 @@ private fun TopBar(state: LauncherUiState, onAction: (LauncherAction) -> Unit) {
             style = MaterialTheme.typography.labelMedium,
             color = SolisColors.Accent,
         )
+        if (state.focusActive) {
+            Text(
+                text = "[focusing · ${FocusSession.format(state.focusRemainingSeconds)} left]",
+                style = MaterialTheme.typography.labelMedium,
+                color = SolisColors.White,
+            )
+        }
     }
 }
 

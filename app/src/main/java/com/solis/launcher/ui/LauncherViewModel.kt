@@ -6,16 +6,14 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.solis.launcher.BuildConfig
 import com.solis.launcher.SolisApp
-import com.solis.launcher.billing.BillingEvent
-import com.solis.launcher.billing.BillingManager
 import com.solis.launcher.data.AppRepository
 import com.solis.launcher.data.DataStoreManager
 import com.solis.launcher.data.QuoteBank
 import com.solis.launcher.domain.AppEntry
 import com.solis.launcher.domain.AppFilter
 import com.solis.launcher.domain.CurfewPolicy
+import com.solis.launcher.domain.FocusSession
 import com.solis.launcher.domain.LauncherPreferences
 import com.solis.launcher.domain.QuoteRotation
 import com.solis.launcher.system.FocusAccessibilityService
@@ -46,7 +44,7 @@ import java.time.LocalDateTime
 
 /**
  * The launcher's single state machine. Reduces [LauncherAction]s into [LauncherUiState] and
- * emits [LauncherEffect]s for anything that needs an Activity (starting intents, billing UI).
+ * emits [LauncherEffect]s for anything that needs an Activity (starting intents).
  */
 class LauncherViewModel(
     private val app: Application,
@@ -54,7 +52,6 @@ class LauncherViewModel(
     private val appRepository: AppRepository,
     private val intentResolver: IntentResolver,
     private val roleHelper: LauncherRoleHelper,
-    private val billingManager: BillingManager,
     private val lockscreenWriter: LockscreenQuoteWriter,
 ) : ViewModel() {
 
@@ -65,7 +62,6 @@ class LauncherViewModel(
         val query: String = "",
         val isDefaultLauncher: Boolean = true,
         val accessibilityEnabled: Boolean = false,
-        val paywallMessage: String? = null,
     )
 
     private val session = MutableStateFlow(Session())
@@ -92,10 +88,8 @@ class LauncherViewModel(
         session,
         prefs,
         appRepository.apps,
-        billingManager.formattedPrice,
-    ) { s, p, apps, price ->
-        // Pro-only filters fall away automatically if the entitlement is ever revoked.
-        val hidden = if (p.isPro) p.hiddenPackages else emptySet()
+    ) { s, p, apps ->
+        val hidden = p.hiddenPackages
         LauncherUiState(
             screen = s.screen,
             dialog = s.dialog,
@@ -107,8 +101,6 @@ class LauncherViewModel(
             query = s.query,
             isDefaultLauncher = s.isDefaultLauncher,
             accessibilityEnabled = s.accessibilityEnabled,
-            price = price,
-            paywallMessage = s.paywallMessage,
         )
     }
 
@@ -119,7 +111,8 @@ class LauncherViewModel(
             now = now,
             // Zero the metric at midnight without waiting for a DataStore write.
             prefs = if (p.dodgedDate == today || p.dodgedToday == 0) p else p.copy(dodgedToday = 0),
-            curfewLocked = p.isPro && CurfewPolicy.isLocked(p.curfew, now.hour * 60 + now.minute),
+            curfewLocked = CurfewPolicy.isLocked(p.curfew, now.hour * 60 + now.minute),
+            focusRemainingSeconds = FocusSession.remainingSeconds(p.focusUntilMillis, System.currentTimeMillis()),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LauncherUiState())
 
@@ -127,7 +120,6 @@ class LauncherViewModel(
         refreshSystemStatus()
         rotateQuotesPeriodically()
         syncLockscreenQuote()
-        observeBilling()
     }
 
     fun onAction(action: LauncherAction) {
@@ -172,36 +164,26 @@ class LauncherViewModel(
                 session.update { it.copy(dialog = null) }
                 emit(LauncherEffect.StartActivity(intentResolver.accessibilitySettingsIntent()))
             }
-            LauncherAction.OpenPaywall -> showDialog(LauncherDialog.Paywall)
-            LauncherAction.Purchase -> {
-                session.update { it.copy(paywallMessage = null) }
-                emit(LauncherEffect.LaunchPurchaseFlow)
-            }
-            LauncherAction.RestorePurchase -> {
-                session.update { it.copy(paywallMessage = "checking google play…") }
-                billingManager.restorePurchases()
-            }
 
-            is LauncherAction.SetCurfew -> proOnly { dataStore.setCurfew(action.config) }
-            is LauncherAction.SetLaunchDelay -> proOnly { dataStore.setLaunchDelay(action.seconds) }
-            is LauncherAction.AddQuote -> proOnly {
+            is LauncherAction.SetCurfew -> persist { dataStore.setCurfew(action.config) }
+            is LauncherAction.SetLaunchDelay -> persist { dataStore.setLaunchDelay(action.seconds) }
+            is LauncherAction.AddQuote -> persist {
                 val text = action.text.trim()
                 if (text.isNotEmpty()) dataStore.setCustomQuotes(prefs.value.customQuotes + text)
             }
-            is LauncherAction.RemoveQuote -> proOnly {
+            is LauncherAction.RemoveQuote -> persist {
                 val quotes = prefs.value.customQuotes
                 if (action.index in quotes.indices) {
                     dataStore.setCustomQuotes(quotes.filterIndexed { i, _ -> i != action.index })
                 }
             }
-            is LauncherAction.SetUseCustomQuotes -> proOnly { dataStore.setUseCustomQuotes(action.enabled) }
-            is LauncherAction.SetLockscreenSync -> proOnly { dataStore.setLockscreenQuoteSync(action.enabled) }
+            is LauncherAction.SetUseCustomQuotes -> persist { dataStore.setUseCustomQuotes(action.enabled) }
+            is LauncherAction.SetLockscreenSync -> persist { dataStore.setLockscreenQuoteSync(action.enabled) }
             LauncherAction.ResetNotesApp -> viewModelScope.launch { dataStore.setNotesPackage(null) }
             LauncherAction.OpenAccessibilitySettings ->
                 emit(LauncherEffect.StartActivity(intentResolver.accessibilitySettingsIntent()))
-            LauncherAction.DebugTogglePro -> if (BuildConfig.DEBUG) {
-                viewModelScope.launch { dataStore.setPro(!prefs.value.isPro) }
-            }
+            is LauncherAction.StartFocus -> startFocus(action.minutes)
+            LauncherAction.EndFocus -> persist { dataStore.setFocusUntil(0L) }
         }
     }
 
@@ -209,7 +191,7 @@ class LauncherViewModel(
 
     private fun goHome() {
         cancelCountdownSilently()
-        session.update { it.copy(screen = Screen.HOME, dialog = null, query = "", paywallMessage = null) }
+        session.update { it.copy(screen = Screen.HOME, dialog = null, query = "") }
     }
 
     private fun onBack() {
@@ -224,13 +206,13 @@ class LauncherViewModel(
     }
 
     private fun showDialog(dialog: LauncherDialog) =
-        session.update { it.copy(dialog = dialog, paywallMessage = null) }
+        session.update { it.copy(dialog = dialog) }
 
     private fun dismissDialog() {
         if (session.value.dialog is LauncherDialog.LaunchCountdown) {
             cancelCountdown()
         } else {
-            session.update { it.copy(dialog = null, paywallMessage = null) }
+            session.update { it.copy(dialog = null) }
         }
     }
 
@@ -267,7 +249,7 @@ class LauncherViewModel(
 
     private fun launchApp(app: AppEntry) {
         val p = prefs.value
-        if (p.isPro && app.packageName in p.distractionPackages) {
+        if (app.packageName in p.distractionPackages) {
             startCountdown(app, p.launchDelaySeconds)
         } else {
             openAndReturnHome(app)
@@ -337,10 +319,9 @@ class LauncherViewModel(
         }
     }
 
-    // ---- Pro features ----------------------------------------------------------------------
+    // ---- Vault, launch delay, focus ----------------------------------------------------------
 
     private fun toggleHidden(app: AppEntry) {
-        if (!prefs.value.isPro) return showDialog(LauncherDialog.Paywall)
         val hide = app.packageName !in prefs.value.hiddenPackages
         session.update { it.copy(dialog = null) }
         viewModelScope.launch { dataStore.setHidden(app.packageName, hide) }
@@ -352,7 +333,6 @@ class LauncherViewModel(
     }
 
     private fun toggleDistraction(app: AppEntry) {
-        if (!prefs.value.isPro) return showDialog(LauncherDialog.Paywall)
         val flag = app.packageName !in prefs.value.distractionPackages
         session.update { it.copy(dialog = null) }
         viewModelScope.launch { dataStore.setDistraction(app.packageName, flag) }
@@ -363,8 +343,13 @@ class LauncherViewModel(
         )
     }
 
-    private fun proOnly(block: suspend () -> Unit) {
-        if (!prefs.value.isPro) return showDialog(LauncherDialog.Paywall)
+    private fun startFocus(minutes: Int) {
+        persist { dataStore.setFocusUntil(FocusSession.endsAt(System.currentTimeMillis(), minutes)) }
+        session.update { it.copy(screen = Screen.HOME, query = "", dialog = null) }
+        emit(LauncherEffect.Toast("focus for $minutes min. the drawer is closed."))
+    }
+
+    private fun persist(block: suspend () -> Unit) {
         viewModelScope.launch { block() }
     }
 
@@ -402,35 +387,10 @@ class LauncherViewModel(
     private fun syncLockscreenQuote() {
         viewModelScope.launch {
             dataStore.preferences
-                .map { p -> if (p.isPro && p.lockscreenQuoteSync) currentQuote(p) else null }
+                .map { p -> if (p.lockscreenQuoteSync) currentQuote(p) else null }
                 .distinctUntilChanged()
                 .filterNotNull()
                 .collectLatest { quote -> lockscreenWriter.write(quote) }
-        }
-    }
-
-    // ---- Billing ---------------------------------------------------------------------------
-
-    private fun observeBilling() {
-        viewModelScope.launch {
-            billingManager.events.collect { event ->
-                when (event) {
-                    BillingEvent.Unlocked -> {
-                        if (session.value.dialog == LauncherDialog.Paywall) {
-                            session.update { it.copy(dialog = null, paywallMessage = null) }
-                            emit(LauncherEffect.Toast("solis pro unlocked. thank you."))
-                        }
-                    }
-                    BillingEvent.Pending -> session.update {
-                        it.copy(paywallMessage = "payment pending. pro unlocks when it clears.")
-                    }
-                    BillingEvent.NothingToRestore -> session.update {
-                        it.copy(paywallMessage = "no purchase found on this google account.")
-                    }
-                    BillingEvent.Cancelled -> session.update { it.copy(paywallMessage = null) }
-                    is BillingEvent.Error -> session.update { it.copy(paywallMessage = event.message.lowercase()) }
-                }
-            }
         }
     }
 
@@ -453,7 +413,6 @@ class LauncherViewModel(
                     appRepository = c.appRepository,
                     intentResolver = c.intentResolver,
                     roleHelper = c.roleHelper,
-                    billingManager = c.billingManager,
                     lockscreenWriter = c.lockscreenWriter,
                 )
             }

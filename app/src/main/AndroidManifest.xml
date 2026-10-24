@@ -16,14 +16,11 @@
     <!-- Required for Intent.ACTION_DELETE (uninstall from the long-press sheet) on API 28+. -->
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
-    <!-- Pro: writes the current harsh-truth quote onto the lock screen wallpaper. -->
+    <!-- Writes the current harsh-truth quote onto the lock screen wallpaper. -->
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
 
     <!-- Best-effort shade pull-down fallback when the accessibility service is off. -->
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
-
-    <!-- Play Billing (also merged from the billing library, declared here for clarity). -->
-    <uses-permission android:name="com.android.vending.BILLING" />
 
     <application
         android:name=".SolisApp"

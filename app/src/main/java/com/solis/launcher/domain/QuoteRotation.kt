@@ -8,9 +8,9 @@ object QuoteRotation {
     fun isDue(rotatedAtMillis: Long, nowMillis: Long): Boolean =
         rotatedAtMillis == 0L || nowMillis - rotatedAtMillis >= ROTATION_INTERVAL_MILLIS
 
-    /** Picks the quote list in force: custom quotes only when Pro, enabled and non-empty. */
+    /** Picks the quote list in force: custom quotes only when enabled and non-empty. */
     fun activeBank(prefs: LauncherPreferences, defaults: List<String>): List<String> =
-        if (prefs.isPro && prefs.useCustomQuotes && prefs.customQuotes.isNotEmpty()) {
+        if (prefs.useCustomQuotes && prefs.customQuotes.isNotEmpty()) {
             prefs.customQuotes
         } else {
             defaults

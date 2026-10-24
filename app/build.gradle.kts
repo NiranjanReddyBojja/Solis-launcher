@@ -45,7 +45,7 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
-    // billing pulls in fragment 1.1.0 via play-services; ActivityResult APIs need >= 1.3.0.
+    // ActivityResult APIs need fragment >= 1.3.0; pin it so no transitive dependency drags it back.
     implementation(libs.androidx.fragment)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -58,7 +58,6 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 
     implementation(libs.androidx.datastore.preferences)
-    implementation(libs.billing.ktx)
     implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.junit)

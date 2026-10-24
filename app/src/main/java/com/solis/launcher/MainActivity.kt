@@ -27,8 +27,8 @@ import kotlinx.coroutines.launch
 
 /**
  * The home activity. Owns no logic: it renders [LauncherViewModel] state, forwards input as
- * actions, and performs effects that need an Activity (starting intents, the billing sheet,
- * the default-launcher role request).
+ * actions, and performs effects that need an Activity (starting intents, the default-launcher
+ * role request).
  */
 class MainActivity : ComponentActivity() {
 
@@ -86,8 +86,6 @@ class MainActivity : ComponentActivity() {
             is LauncherEffect.StartActivity -> safeStart(effect.intent)
             is LauncherEffect.RequestHomeRole -> runCatching { homeRoleRequest.launch(effect.intent) }
                 .onFailure { toast("open settings → default apps → home app") }
-            LauncherEffect.LaunchPurchaseFlow ->
-                (application as SolisApp).container.billingManager.launchPurchaseFlow(this)
             is LauncherEffect.Toast -> toast(effect.text)
         }
     }

@@ -17,7 +17,6 @@ enum class AccessibilityPurpose { LOCK_SCREEN, NOTIFICATION_SHADE }
 
 sealed interface LauncherDialog {
     data object ImpulseInterceptor : LauncherDialog
-    data object Paywall : LauncherDialog
     data class AccessibilityDisclosure(val purpose: AccessibilityPurpose) : LauncherDialog
     data object NotesPicker : LauncherDialog
     data class AppActions(val app: AppEntry) : LauncherDialog
@@ -36,12 +35,13 @@ data class LauncherUiState(
     val searchResults: List<AppEntry> = emptyList(),
     val query: String = "",
     val curfewLocked: Boolean = false,
+    /** Seconds left in the running focus session, 0 when none. */
+    val focusRemainingSeconds: Long = 0L,
     val isDefaultLauncher: Boolean = true,
     val accessibilityEnabled: Boolean = false,
-    val price: String? = null,
-    val paywallMessage: String? = null,
 ) {
-    val isPro: Boolean get() = prefs.isPro
+    val focusActive: Boolean get() = focusRemainingSeconds > 0
+    val drawerLocked: Boolean get() = curfewLocked || focusActive
     val showLauncherSetup: Boolean get() = !isDefaultLauncher && !prefs.launcherSetupDismissed
 }
 
@@ -77,11 +77,8 @@ sealed interface LauncherAction {
     // Dialogs
     data object DismissDialog : LauncherAction
     data object AcceptAccessibilityDisclosure : LauncherAction
-    data object OpenPaywall : LauncherAction
-    data object Purchase : LauncherAction
-    data object RestorePurchase : LauncherAction
 
-    // Settings (Pro)
+    // Settings
     data class SetCurfew(val config: CurfewConfig) : LauncherAction
     data class SetLaunchDelay(val seconds: Int) : LauncherAction
     data class AddQuote(val text: String) : LauncherAction
@@ -90,12 +87,12 @@ sealed interface LauncherAction {
     data class SetLockscreenSync(val enabled: Boolean) : LauncherAction
     data object ResetNotesApp : LauncherAction
     data object OpenAccessibilitySettings : LauncherAction
-    data object DebugTogglePro : LauncherAction
+    data class StartFocus(val minutes: Int) : LauncherAction
+    data object EndFocus : LauncherAction
 }
 
 sealed interface LauncherEffect {
     data class StartActivity(val intent: Intent) : LauncherEffect
     data class RequestHomeRole(val intent: Intent) : LauncherEffect
-    data object LaunchPurchaseFlow : LauncherEffect
     data class Toast(val text: String) : LauncherEffect
 }
