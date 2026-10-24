@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.solis.launcher.domain.AppEntry
 import com.solis.launcher.domain.CurfewPolicy
+import com.solis.launcher.domain.FocusSession
 import com.solis.launcher.ui.LauncherAction
 import com.solis.launcher.ui.LauncherUiState
 import com.solis.launcher.ui.theme.SolisColors
@@ -62,8 +63,8 @@ fun FocusDrawer(
             .imePadding()
             .padding(horizontal = 28.dp, vertical = 20.dp),
     ) {
-        if (state.curfewLocked) {
-            CurfewLockout(state, onAction)
+        if (state.drawerLocked) {
+            DrawerLockout(state, onAction)
             return@Column
         }
 
@@ -76,7 +77,7 @@ fun FocusDrawer(
 
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             if (state.query.isBlank()) {
-                AppCarousel(state.carouselApps, state.prefs.distractionPackages, state.isPro, onAction)
+                AppCarousel(state.carouselApps, state.prefs.distractionPackages, onAction)
             } else {
                 SearchResults(state.searchResults, onAction)
             }
@@ -150,7 +151,6 @@ private fun SearchBar(query: String, onQueryChange: (String) -> Unit, onGo: () -
 private fun AppCarousel(
     apps: List<AppEntry>,
     distractions: Set<String>,
-    isPro: Boolean,
     onAction: (LauncherAction) -> Unit,
 ) {
     if (apps.isEmpty()) {
@@ -183,7 +183,7 @@ private fun AppCarousel(
                             )
                             .padding(horizontal = 16.dp, vertical = 24.dp),
                     )
-                    if (isPro && app.packageName in distractions) {
+                    if (app.packageName in distractions) {
                         Text(
                             text = "⧗ delayed",
                             style = MaterialTheme.typography.labelSmall,
@@ -234,15 +234,21 @@ private fun SearchResults(results: List<AppEntry>, onAction: (LauncherAction) ->
 }
 
 @Composable
-private fun CurfewLockout(state: LauncherUiState, onAction: (LauncherAction) -> Unit) {
+private fun DrawerLockout(state: LauncherUiState, onAction: (LauncherAction) -> Unit) {
+    // A focus session can outlast the curfew, so it wins when both apply.
+    val (title, opens) = if (state.focusActive) {
+        "focusing." to "in ${FocusSession.format(state.focusRemainingSeconds)}"
+    } else {
+        "curfew." to "at ${CurfewPolicy.format(state.prefs.curfew.endMinutes)}"
+    }
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
     ) {
-        Text("curfew.", style = MaterialTheme.typography.displaySmall, color = SolisColors.White)
+        Text(title, style = MaterialTheme.typography.displaySmall, color = SolisColors.White)
         Spacer(Modifier.height(12.dp))
         Text(
-            text = "the drawer opens again at ${CurfewPolicy.format(state.prefs.curfew.endMinutes)}.\n" +
+            text = "the drawer opens again $opens.\n" +
                 "phone, messages and the rest of home still work.",
             style = MaterialTheme.typography.bodyMedium,
             color = SolisColors.Accent,

@@ -25,7 +25,6 @@ import com.solis.launcher.ui.theme.TextAction
 @Composable
 fun AppActionsSheet(
     app: AppEntry,
-    isPro: Boolean,
     isHidden: Boolean,
     isDistraction: Boolean,
     launchDelaySeconds: Int,
@@ -35,7 +34,6 @@ fun AppActionsSheet(
     onToggleDistraction: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val proTag = if (isPro) "" else "  (pro)"
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -57,14 +55,12 @@ fun AppActionsSheet(
             TextAction("app info", onAppInfo)
             TextAction("uninstall", onUninstall)
             TextAction(
-                text = (if (isHidden) "show in carousel" else "hide from carousel") + proTag,
+                text = if (isHidden) "show in carousel" else "hide from carousel",
                 onClick = onToggleHidden,
-                color = if (isPro) SolisColors.White else SolisColors.Accent,
             )
             TextAction(
-                text = (if (isDistraction) "remove launch delay" else "delay launch ${launchDelaySeconds}s") + proTag,
+                text = if (isDistraction) "remove launch delay" else "delay launch ${launchDelaySeconds}s",
                 onClick = onToggleDistraction,
-                color = if (isPro) SolisColors.White else SolisColors.Accent,
             )
         }
     }

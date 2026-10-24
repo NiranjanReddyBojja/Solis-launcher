@@ -16,7 +16,6 @@ import com.solis.launcher.ui.dialogs.AppActionsSheet
 import com.solis.launcher.ui.dialogs.ImpulseInterceptorDialog
 import com.solis.launcher.ui.dialogs.LaunchCountdownDialog
 import com.solis.launcher.ui.dialogs.NotesPickerDialog
-import com.solis.launcher.ui.dialogs.ProPaywallDialog
 import com.solis.launcher.ui.drawer.FocusDrawer
 import com.solis.launcher.ui.home.HomeScreen
 import com.solis.launcher.ui.settings.SettingsScreen
@@ -52,13 +51,6 @@ fun SolisRoot(state: LauncherUiState, onAction: (LauncherAction) -> Unit) {
                 onBurn = { onAction(LauncherAction.BurnImpulse) },
                 onDismiss = dismiss,
             )
-            LauncherDialog.Paywall -> ProPaywallDialog(
-                price = state.price,
-                message = state.paywallMessage,
-                onPurchase = { onAction(LauncherAction.Purchase) },
-                onRestore = { onAction(LauncherAction.RestorePurchase) },
-                onDismiss = dismiss,
-            )
             is LauncherDialog.AccessibilityDisclosure -> AccessibilityDisclosureDialog(
                 purpose = dialog.purpose,
                 onAccept = { onAction(LauncherAction.AcceptAccessibilityDisclosure) },
@@ -71,7 +63,6 @@ fun SolisRoot(state: LauncherUiState, onAction: (LauncherAction) -> Unit) {
             )
             is LauncherDialog.AppActions -> AppActionsSheet(
                 app = dialog.app,
-                isPro = state.isPro,
                 isHidden = dialog.app.packageName in state.prefs.hiddenPackages,
                 isDistraction = dialog.app.packageName in state.prefs.distractionPackages,
                 launchDelaySeconds = state.prefs.launchDelaySeconds,

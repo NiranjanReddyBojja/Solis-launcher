@@ -28,8 +28,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.dp
-import com.solis.launcher.BuildConfig
 import com.solis.launcher.domain.CurfewPolicy
+import com.solis.launcher.domain.FocusSession
 import com.solis.launcher.domain.LauncherPreferences
 import com.solis.launcher.ui.LauncherAction
 import com.solis.launcher.ui.LauncherUiState
@@ -41,10 +41,7 @@ private const val CURFEW_STEP_MINUTES = 15
 private const val DELAY_STEP_SECONDS = 5
 private const val MINUTES_PER_DAY = 24 * 60
 
-/**
- * Settings, reached by long-pressing the clock or from the drawer. Pro rows stay visible when
- * locked; touching one opens the paywall (the ViewModel enforces the gate).
- */
+/** Settings, reached by long-pressing the clock or from the drawer. Everything here is free. */
 @Composable
 fun SettingsScreen(
     state: LauncherUiState,
@@ -52,7 +49,7 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     val prefs = state.prefs
-    val proColor = if (state.isPro) SolisColors.White else SolisColors.Accent
+    val color = SolisColors.White
 
     LazyColumn(
         modifier = modifier
@@ -101,49 +98,62 @@ fun SettingsScreen(
             )
         }
 
-        section("solis pro")
+        section("focus session")
         item {
-            if (state.isPro) {
-                Text("unlocked. thank you.", style = MaterialTheme.typography.bodyMedium, color = SolisColors.White)
-            } else {
-                SolisOutlinedButton(
-                    text = "[ unlock for ${state.price ?: "$4.99"} ]",
-                    onClick = { onAction(LauncherAction.OpenPaywall) },
-                    modifier = Modifier.fillMaxWidth(),
+            if (state.focusActive) {
+                Text(
+                    "drawer closed for ${FocusSession.format(state.focusRemainingSeconds)}.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = color,
                 )
-                TextAction("restore purchase", { onAction(LauncherAction.RestorePurchase) },
+                TextAction("end early", { onAction(LauncherAction.EndFocus) },
                     color = SolisColors.Accent, style = MaterialTheme.typography.labelLarge)
+            } else {
+                Text(
+                    "close the drawer for a while. home and the essentials keep working.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = SolisColors.Accent,
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    FocusSession.PRESETS_MINUTES.forEach { minutes ->
+                        SolisOutlinedButton(
+                            text = "[ $minutes min ]",
+                            onClick = { onAction(LauncherAction.StartFocus(minutes)) },
+                        )
+                    }
+                }
             }
         }
 
-        section("curfew", pro = !state.isPro)
+        section("curfew")
         item {
             val curfew = prefs.curfew
-            Toggle("lock the drawer at night", curfew.enabled, proColor) {
+            Toggle("lock the drawer at night", curfew.enabled, color) {
                 onAction(LauncherAction.SetCurfew(curfew.copy(enabled = !curfew.enabled)))
             }
             Stepper(
                 label = "from",
                 value = CurfewPolicy.format(curfew.startMinutes),
-                color = proColor,
+                color = color,
                 onMinus = { onAction(LauncherAction.SetCurfew(curfew.copy(startMinutes = stepMinutes(curfew.startMinutes, -1)))) },
                 onPlus = { onAction(LauncherAction.SetCurfew(curfew.copy(startMinutes = stepMinutes(curfew.startMinutes, +1)))) },
             )
             Stepper(
                 label = "until",
                 value = CurfewPolicy.format(curfew.endMinutes),
-                color = proColor,
+                color = color,
                 onMinus = { onAction(LauncherAction.SetCurfew(curfew.copy(endMinutes = stepMinutes(curfew.endMinutes, -1)))) },
                 onPlus = { onAction(LauncherAction.SetCurfew(curfew.copy(endMinutes = stepMinutes(curfew.endMinutes, +1)))) },
             )
         }
 
-        section("launch delay", pro = !state.isPro)
+        section("launch delay")
         item {
             Stepper(
                 label = "wait",
                 value = "${prefs.launchDelaySeconds}s",
-                color = proColor,
+                color = color,
                 onMinus = {
                     onAction(LauncherAction.SetLaunchDelay(prefs.launchDelaySeconds - DELAY_STEP_SECONDS))
                 },
@@ -166,12 +176,12 @@ fun SettingsScreen(
             )
         }
 
-        section("harsh truths", pro = !state.isPro)
+        section("harsh truths")
         item {
-            Toggle("use my own quotes", prefs.useCustomQuotes, proColor) {
+            Toggle("use my own quotes", prefs.useCustomQuotes, color) {
                 onAction(LauncherAction.SetUseCustomQuotes(!prefs.useCustomQuotes))
             }
-            Toggle("mirror quote to lock screen", prefs.lockscreenQuoteSync, proColor) {
+            Toggle("mirror quote to lock screen", prefs.lockscreenQuoteSync, color) {
                 onAction(LauncherAction.SetLockscreenSync(!prefs.lockscreenQuoteSync))
             }
             Spacer(Modifier.height(8.dp))
@@ -190,16 +200,7 @@ fun SettingsScreen(
                 )
             }
         }
-        item { QuoteComposer(proColor, state.isPro) { onAction(LauncherAction.AddQuote(it)) } }
-
-        if (BuildConfig.DEBUG) {
-            section("debug")
-            item {
-                Toggle("pro (debug builds only)", state.isPro, SolisColors.White) {
-                    onAction(LauncherAction.DebugTogglePro)
-                }
-            }
-        }
+        item { QuoteComposer(color) { onAction(LauncherAction.AddQuote(it)) } }
 
         item { Spacer(Modifier.height(48.dp)) }
     }
@@ -208,11 +209,11 @@ fun SettingsScreen(
 private fun stepMinutes(current: Int, direction: Int): Int =
     Math.floorMod(current + direction * CURFEW_STEP_MINUTES, MINUTES_PER_DAY)
 
-private fun LazyListScope.section(title: String, pro: Boolean = false) {
+private fun LazyListScope.section(title: String) {
     item(key = "section-$title") {
         Spacer(Modifier.height(28.dp))
         Text(
-            text = title + if (pro) "  (pro)" else "",
+            text = title,
             style = MaterialTheme.typography.labelMedium,
             color = SolisColors.Accent,
         )
@@ -271,7 +272,7 @@ private fun Stepper(
 }
 
 @Composable
-private fun QuoteComposer(color: androidx.compose.ui.graphics.Color, isPro: Boolean, onAdd: (String) -> Unit) {
+private fun QuoteComposer(color: androidx.compose.ui.graphics.Color, onAdd: (String) -> Unit) {
     var draft by rememberSaveable { mutableStateOf("") }
     Column(modifier = Modifier.padding(top = 8.dp)) {
         BasicTextField(
@@ -295,8 +296,7 @@ private fun QuoteComposer(color: androidx.compose.ui.graphics.Color, isPro: Bool
             "[ add quote ]",
             onClick = {
                 onAdd(draft)
-                // Without Pro the paywall opens instead; keep the draft for after unlocking.
-                if (isPro) draft = ""
+                draft = ""
             },
             color = color,
             style = MaterialTheme.typography.labelLarge,

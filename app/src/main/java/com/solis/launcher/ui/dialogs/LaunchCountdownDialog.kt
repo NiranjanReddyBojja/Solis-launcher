@@ -14,7 +14,7 @@ import com.solis.launcher.domain.AppEntry
 import com.solis.launcher.ui.theme.SolisColors
 import com.solis.launcher.ui.theme.SolisOutlinedButton
 
-/** Pro: the forced pause before a flagged distraction app opens. Backing out counts as a dodge. */
+/** The forced pause before a flagged distraction app opens. Backing out counts as a dodge. */
 @Composable
 fun LaunchCountdownDialog(
     app: AppEntry,

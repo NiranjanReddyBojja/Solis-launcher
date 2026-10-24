@@ -10,7 +10,7 @@ data class AppEntry(
     val key: String get() = "$packageName/$activityName"
 }
 
-/** Lockout window during which the focus drawer is closed (Pro). Minutes since midnight. */
+/** Lockout window during which the focus drawer is closed. Minutes since midnight. */
 data class CurfewConfig(
     val enabled: Boolean = false,
     val startMinutes: Int = 22 * 60,
@@ -19,7 +19,6 @@ data class CurfewConfig(
 
 /** Everything persisted in DataStore, emitted as one snapshot. */
 data class LauncherPreferences(
-    val isPro: Boolean = false,
     val dodgedToday: Int = 0,
     /** Raw counter and its ISO date, so the UI can zero the metric at midnight without a write. */
     val dodgedCount: Int = 0,
@@ -37,6 +36,8 @@ data class LauncherPreferences(
     val notesPackage: String? = null,
     val launcherSetupDismissed: Boolean = false,
     val accessibilityDisclosureAccepted: Boolean = false,
+    /** Wall-clock end of the current focus session, or 0 when none is running. */
+    val focusUntilMillis: Long = 0L,
 ) {
     companion object {
         const val MIN_LAUNCH_DELAY_SECONDS = 5

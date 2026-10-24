@@ -18,12 +18,12 @@ class QuoteRotationTest {
     }
 
     @Test
-    fun `custom quotes need pro, the toggle and at least one quote`() {
+    fun `custom quotes need the toggle and at least one quote`() {
         val custom = listOf("mine")
         val base = LauncherPreferences(customQuotes = custom, useCustomQuotes = true)
-        assertEquals(defaults, QuoteRotation.activeBank(base, defaults))
-        assertEquals(custom, QuoteRotation.activeBank(base.copy(isPro = true), defaults))
-        assertEquals(defaults, QuoteRotation.activeBank(base.copy(isPro = true, customQuotes = emptyList()), defaults))
+        assertEquals(custom, QuoteRotation.activeBank(base, defaults))
+        assertEquals(defaults, QuoteRotation.activeBank(base.copy(useCustomQuotes = false), defaults))
+        assertEquals(defaults, QuoteRotation.activeBank(base.copy(customQuotes = emptyList()), defaults))
     }
 
     @Test

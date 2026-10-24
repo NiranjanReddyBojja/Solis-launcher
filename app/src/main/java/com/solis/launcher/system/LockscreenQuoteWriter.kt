@@ -15,7 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Pro: renders the current quote as white monospace text on pure black and sets it as the
+ * Renders the current quote as white monospace text on pure black and sets it as the
  * lock screen wallpaper only (FLAG_LOCK), leaving the home wallpaper untouched.
  */
 class LockscreenQuoteWriter(private val context: Context) {

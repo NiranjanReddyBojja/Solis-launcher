@@ -24,11 +24,7 @@ import java.time.LocalDate
 
 /**
  * Single source of truth for everything Solis persists: settings, pinned/hidden apps, quotes,
- * the dodged-impulse metric and the cached Pro entitlement.
- *
- * Pro status here is a cache. [com.solis.launcher.billing.BillingManager] re-verifies it against
- * Google Play on every start and overwrites it, so editing the file on a rooted device does not
- * survive the next successful Play query.
+ * the dodged-impulse metric and the current focus session.
  */
 class DataStoreManager(
     context: Context,
@@ -40,7 +36,6 @@ class DataStoreManager(
     )
 
     private object Keys {
-        val IS_PRO = booleanPreferencesKey("is_pro")
         val DODGED_COUNT = intPreferencesKey("dodged_count")
         val DODGED_DATE = stringPreferencesKey("dodged_date")
         val DODGED_TOTAL = intPreferencesKey("dodged_total")
@@ -58,6 +53,7 @@ class DataStoreManager(
         val NOTES_PACKAGE = stringPreferencesKey("notes_package")
         val SETUP_DISMISSED = booleanPreferencesKey("launcher_setup_dismissed")
         val A11Y_DISCLOSURE = booleanPreferencesKey("a11y_disclosure_accepted")
+        val FOCUS_UNTIL = longPreferencesKey("focus_until")
     }
 
     val preferences: Flow<LauncherPreferences> = store.data
@@ -68,7 +64,6 @@ class DataStoreManager(
     private fun toModel(p: Preferences): LauncherPreferences {
         val isToday = p[Keys.DODGED_DATE] == today().toString()
         return LauncherPreferences(
-            isPro = p[Keys.IS_PRO] ?: false,
             dodgedToday = if (isToday) p[Keys.DODGED_COUNT] ?: 0 else 0,
             dodgedCount = p[Keys.DODGED_COUNT] ?: 0,
             dodgedDate = p[Keys.DODGED_DATE],
@@ -90,6 +85,7 @@ class DataStoreManager(
             notesPackage = p[Keys.NOTES_PACKAGE],
             launcherSetupDismissed = p[Keys.SETUP_DISMISSED] ?: false,
             accessibilityDisclosureAccepted = p[Keys.A11Y_DISCLOSURE] ?: false,
+            focusUntilMillis = p[Keys.FOCUS_UNTIL] ?: 0L,
         )
     }
 
@@ -106,9 +102,10 @@ class DataStoreManager(
         }
     }
 
-    // ---- Pro entitlement -------------------------------------------------------------------
+    // ---- Focus session ---------------------------------------------------------------------
 
-    suspend fun setPro(isPro: Boolean) = store.edit { it[Keys.IS_PRO] = isPro }
+    /** Pass 0 to end the session. */
+    suspend fun setFocusUntil(untilMillis: Long) = store.edit { it[Keys.FOCUS_UNTIL] = untilMillis }
 
     // ---- App vault and distraction flags ---------------------------------------------------
 
